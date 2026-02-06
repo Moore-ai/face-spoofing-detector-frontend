@@ -1,11 +1,12 @@
-# AGENTS.md - Coding Guidelines for Frontend
+# AGENTS.md - Coding Guidelines for Face Liveness Detection Frontend
 
 ## Project Overview
 
-Tauri + React + TypeScript desktop application with Rust backend.
+人脸活体检测系统前端 - Tauri + React + TypeScript 桌面应用
 
 - **Frontend**: React 19, TypeScript 5.9, Vite 7, Tailwind CSS 4
 - **Backend**: Rust with Tauri v2
+- **Features**: 单模态/融合模式检测, 批量图片上传, 实时结果显示
 
 ## Build Commands
 
@@ -30,12 +31,13 @@ npm run tauri -- --help  # Show Tauri CLI help
 No test framework is currently configured. To add tests:
 
 ```bash
-# Install testing libraries (recommended)
+# Install testing libraries
 npm install --save-dev vitest @testing-library/react @testing-library/jest-dom
 
-# Run tests once configured
-npx vitest               # Run all tests
-npx vitest run <pattern> # Run tests matching pattern
+# Run tests
+npx vitest               # Run all tests in watch mode
+npx vitest run           # Run all tests once
+npx vitest run <pattern> # Run specific test file (e.g., "Button")
 npx vitest --ui          # Run with UI
 ```
 
@@ -43,10 +45,12 @@ npx vitest --ui          # Run with UI
 
 ### TypeScript/React (Frontend)
 
-**Imports**:
-- Group imports: React, third-party, internal, styles
-- Use named imports for React hooks: `import { useState, useEffect } from 'react'`
-- Use `@tauri-apps/api/core` for invoking Rust commands
+**Imports** (按顺序分组):
+1. React imports: `import { useState } from "react"`
+2. Third-party: `import { invoke } from "@tauri-apps/api/core"`
+3. Internal types: `import type { DetectionMode } from "../types"`
+4. Internal components/hooks: `import { Header } from "./components"`
+5. Styles: `import "./App.css"`
 
 **Formatting**:
 - 2-space indentation
@@ -55,67 +59,107 @@ npx vitest --ui          # Run with UI
 - Max line length: 100 characters
 
 **Types**:
-- Enable strict TypeScript mode (already configured)
-- Always define prop interfaces for components
-- Use explicit return types for exported functions
-- Prefer `type` over `interface` for object shapes
+- Define prop interfaces at component top: `interface ButtonProps extends BaseProps`
+- Use explicit return types: `: React.ReactElement`
+- Prefer `type` for unions, `interface` for object shapes
+- Export types from `src/types/index.ts`
 
 **Naming Conventions**:
-- Components: PascalCase (e.g., `UserProfile.tsx`)
+- Components: PascalCase (e.g., `ModeSelector.tsx`)
+- Hooks: camelCase with `use` prefix (e.g., `useDetection.ts`)
 - Functions/variables: camelCase
 - Constants: UPPER_SNAKE_CASE
-- Hooks: prefix with `use` (e.g., `useAuth`)
+- Types: PascalCase
 - CSS classes: kebab-case
+- Rust commands: snake_case
+
+**Component Structure**:
+```typescript
+// 1. Type imports
+import type { DetectionMode, BaseProps } from "../types";
+
+// 2. Interface definition
+interface ModeSelectorProps extends BaseProps {
+  currentMode: DetectionMode;
+  onModeChange: (mode: DetectionMode) => void;
+}
+
+// 3. JSDoc comment
+/**
+ * 组件描述
+ */
+
+// 4. Component implementation
+export function ModeSelector({ ... }: ModeSelectorProps): React.ReactElement {
+  // implementation
+}
+```
 
 **Error Handling**:
-- Use try/catch for async operations
-- Always handle Promise rejections from Tauri commands
-- Use type assertions with null checks for DOM elements
+- Use try/catch for async Tauri calls
+- Always handle Promise rejections
+- Display errors in UI with error states
+- Prefix unused params with `_`
 
 **React Patterns**:
-- Prefer functional components with hooks
-- Use `React.StrictMode` in development
-- Handle form submissions with `e.preventDefault()`
-- Use `useState` and `useEffect` appropriately
+- Functional components with hooks
+- Custom hooks for state management (see `useDetection.ts`)
+- `React.StrictMode` in development
+- `useCallback` for event handlers
 
 ### Rust (Backend)
 
 **Naming**:
 - Functions/variables: snake_case
-- Types/traits: PascalCase
+- Types/structs: PascalCase
 - Constants: SCREAMING_SNAKE_CASE
 
 **Error Handling**:
-- Use `.expect()` only for unrecoverable errors in main
-- Return `Result<T, E>` for fallible operations
-- Use `?` operator for error propagation
+- Return `Result<T, String>` for fallible commands
+- Use `.expect()` only in main
 
 **Tauri Commands**:
-- Mark with `#[tauri::command]`
-- Keep parameter types simple (String, &str, primitives)
-- Return serializable types
+```rust
+#[tauri::command]
+pub async fn detect_single_mode(
+    request: SingleModeRequest
+) -> Result<BatchDetectionResult, String> {
+    // implementation
+}
+```
 
 ## Project Structure
 
 ```
 src/
-├── App.tsx          # Main React component
-├── App.css          # Component styles
-├── main.tsx         # Entry point
-├── assets/          # Static assets
-└── vite-env.d.ts    # Vite type declarations
+├── api/                   # Tauri 命令封装
+│   ├── tauri.ts
+│   └── commands.d.ts
+├── components/            # React 组件 (每个组件单独文件)
+│   ├── ModeSelector.tsx
+│   ├── ImageUploader.tsx
+│   ├── DetectionCard.tsx
+│   ├── ResultPanel.tsx
+│   ├── ConfidenceBar.tsx
+│   ├── Header.tsx
+│   └── index.ts          # 组件统一导出
+├── hooks/                 # 自定义 Hooks
+│   └── useDetection.ts
+├── types/                 # 全局类型定义
+│   └── index.ts
+├── App.tsx               # 主应用组件
+├── App.css               # 全局样式
+└── main.tsx              # 入口
 
 src-tauri/
-├── src/
-│   ├── main.rs      # Application entry
-│   └── lib.rs       # Tauri commands and setup
-├── Cargo.toml       # Rust dependencies
-└── tauri.conf.json  # Tauri configuration
+└── src/
+    └── lib.rs            # Tauri 命令实现
 ```
 
 ## Key Conventions
 
-- Use Tailwind CSS utility classes for styling
-- Invoke Rust commands via `invoke('command_name', args)`
-- Dark mode supported via `prefers-color-scheme` media query
-- All external links should use `rel="noopener noreferrer"`
+- **CSS**: Use `@import "tailwindcss"` in v4 (not @tailwind directives)
+- **Tauri**: Invoke via `invoke("command_name", args)`
+- **Images**: Support drag-drop and click upload, max 50 files
+- **Types**: All shared types in `src/types/index.ts`
+- **External links**: Use `rel="noopener noreferrer"`

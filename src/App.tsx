@@ -1,50 +1,97 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
+import { Header } from "./components/Header";
+import { ModeSelector } from "./components/ModeSelector";
+import { ImageUploader } from "./components/ImageUploader";
+import { ResultPanel } from "./components/ResultPanel";
+import { useDetection } from "./hooks/useDetection";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+/**
+ * 主应用组件
+ * 人脸活体检测系统前端界面
+ */
+function App(): React.ReactElement {
+  const {
+    mode,
+    setMode,
+    images,
+    addImages,
+    removeImage,
+    clearImages,
+    status,
+    results,
+    error,
+    startDetection,
+    reset,
+  } = useDetection();
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  const isDetecting = status === "detecting";
+  const hasImages = images.length > 0;
+  const hasResults = results !== null && results.totalCount > 0;
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div className="app">
+      <Header />
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank" rel="noopener noreferrer">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank" rel="noopener noreferrer">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel="noopener noreferrer">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+      <main className="main-content">
+        <div className="control-panel">
+          <ModeSelector
+            currentMode={mode}
+            onModeChange={setMode}
+            disabled={isDetecting || hasImages}
+          />
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+          <ImageUploader
+            mode={mode}
+            images={images}
+            onImagesAdd={addImages}
+            onImageRemove={removeImage}
+            disabled={isDetecting}
+          />
+
+          {error && (
+            <div className="error-message">
+              <span className="error-icon">⚠</span>
+              {error}
+            </div>
+          )}
+
+          <div className="action-buttons">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={startDetection}
+              disabled={!hasImages || isDetecting}
+            >
+              {isDetecting ? "检测中..." : "开始检测"}
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                clearImages();
+                reset();
+              }}
+              disabled={isDetecting || (!hasImages && !hasResults)}
+            >
+              清空重置
+            </button>
+          </div>
+        </div>
+
+        <div className="result-container">
+          <ResultPanel
+            results={results}
+            images={images}
+            isLoading={isDetecting}
+          />
+        </div>
+      </main>
+
+      <footer className="app-footer">
+        <p>© 2026 人脸活体检测系统 | Powered by Tauri + React</p>
+      </footer>
+    </div>
   );
 }
 
