@@ -1,0 +1,8 @@
+image:
+  supported_formats:
+    - jpg
+    - jpeg
+    - png
+    - bmp
+    - webp
+  max_file_size_mb: 10

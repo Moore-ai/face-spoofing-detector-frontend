@@ -1,4 +1,7 @@
+use crate::config::ConfigState;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use tauri::State;
 
 /// 单模态检测请求
 #[derive(Debug, Deserialize)]
@@ -9,21 +12,21 @@ pub struct SingleModeRequest {
 }
 
 /// 融合模式请求中的图像对
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ImagePair {
     pub rgb: String,
     pub ir: String,
 }
 
 /// 融合模式检测请求
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FusionModeRequest {
     pub mode: String,
     pub pairs: Vec<ImagePair>,
 }
 
 /// 检测结果类型
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DetectionResultItem {
     pub id: String,
     pub result: String, // "real" 或 "fake"
@@ -33,7 +36,7 @@ pub struct DetectionResultItem {
 }
 
 /// 批量检测结果
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BatchDetectionResult {
     pub results: Vec<DetectionResultItem>,
     pub total_count: usize,
@@ -44,61 +47,81 @@ pub struct BatchDetectionResult {
 
 /// 单模态活体检测命令
 #[tauri::command]
-pub async fn detect_single_mode(request: SingleModeRequest) -> Result<BatchDetectionResult, String> {
-    // TODO: 实现实际的检测逻辑
-    // 这里返回模拟数据供前端开发使用
+pub async fn detect_single_mode(
+    request: SingleModeRequest,
+    client: State<'_, Client>,
+) -> Result<BatchDetectionResult, String> {
+    // 后端 API 地址（可根据实际情况配置）
+    const API_URL: &str = "http://localhost:8000/infer/single";
     
-    let total = request.images.len();
-    let mut results = Vec::with_capacity(total);
+    // 构建请求体
+    let request_body = serde_json::json!({
+        "mode": request.mode,
+        "modality": request.modality,
+        "images": request.images
+    });
     
-    for (i, _) in request.images.iter().enumerate() {
-        results.push(DetectionResultItem {
-            id: format!("single_{}_{}", i, chrono::Utc::now().timestamp_millis()),
-            result: if i % 2 == 0 { "real".to_string() } else { "fake".to_string() },
-            confidence: 0.85 + (i as f64 * 0.01) % 0.15,
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            processing_time: 100 + (i as u64 * 10),
-        });
+    // 发送 POST 请求
+    let response = client
+        .post(API_URL)
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("网络请求失败: {}", e))?;
+    
+    // 检查响应状态
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(format!("服务器返回错误 ({}): {}", status, error_text));
     }
     
-    let real_count = results.iter().filter(|r| r.result == "real").count();
+    // 解析响应
+    let api_response: BatchDetectionResult = response
+        .json()
+        .await
+        .map_err(|e| format!("解析响应失败: {}", e))?;
     
-    Ok(BatchDetectionResult {
-        results,
-        total_count: total,
-        real_count,
-        fake_count: total - real_count,
-        average_confidence: 0.88,
-    })
+    Ok(api_response)
 }
 
 /// 融合模式活体检测命令
 #[tauri::command]
-pub async fn detect_fusion_mode(request: FusionModeRequest) -> Result<BatchDetectionResult, String> {
-    // TODO: 实现实际的融合检测逻辑
-    
-    let total = request.pairs.len();
-    let mut results = Vec::with_capacity(total);
-    
-    for (i, _) in request.pairs.iter().enumerate() {
-        results.push(DetectionResultItem {
-            id: format!("fusion_{}_{}", i, chrono::Utc::now().timestamp_millis()),
-            result: if i % 3 == 0 { "fake".to_string() } else { "real".to_string() },
-            confidence: 0.90 + (i as f64 * 0.005) % 0.1,
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            processing_time: 150 + (i as u64 * 20),
-        });
+pub async fn detect_fusion_mode(
+    request: FusionModeRequest,
+    client: State<'_, Client>,
+) -> Result<BatchDetectionResult, String> {
+    // 后端 API 地址
+    const API_URL: &str = "http://localhost:8000/infer/fusion";
+
+    // 构建请求体
+    let request_body = serde_json::json!({
+        "mode": request.mode,
+        "pairs": request.pairs
+    });
+
+    // 发送 POST 请求
+    let response = client
+        .post(API_URL)
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("网络请求失败: {}", e))?;
+
+    // 检查响应状态
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(format!("服务器返回错误 ({}): {}", status, error_text));
     }
-    
-    let real_count = results.iter().filter(|r| r.result == "real").count();
-    
-    Ok(BatchDetectionResult {
-        results,
-        total_count: total,
-        real_count,
-        fake_count: total - real_count,
-        average_confidence: 0.92,
-    })
+
+    // 解析响应
+    let api_response: BatchDetectionResult = response
+        .json()
+        .await
+        .map_err(|e| format!("解析响应失败: {}", e))?;
+
+    Ok(api_response)
 }
 
 /// 批量检测命令（通用接口）
@@ -106,49 +129,90 @@ pub async fn detect_fusion_mode(request: FusionModeRequest) -> Result<BatchDetec
 pub async fn batch_detect(
     image_paths: Vec<String>,
     mode: String,
+    client: State<'_, Client>,
 ) -> Result<BatchDetectionResult, String> {
-    // TODO: 实现实际的批量检测逻辑
-    
-    let total = image_paths.len();
-    let mut results = Vec::with_capacity(total);
-    
-    for (i, path) in image_paths.iter().enumerate() {
-        results.push(DetectionResultItem {
-            id: format!("batch_{}_{}", i, chrono::Utc::now().timestamp_millis()),
-            result: if path.len() % 2 == 0 { "real".to_string() } else { "fake".to_string() },
-            confidence: 0.80 + (i as f64 * 0.01) % 0.2,
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            processing_time: 120 + (i as u64 * 15),
-        });
+    // 后端 API 地址
+    const API_URL: &str = "http://localhost:8000/infer/batch";
+
+    // 构建请求体
+    let request_body = serde_json::json!({
+        "image_paths": image_paths,
+        "mode": mode
+    });
+
+    // 发送 POST 请求
+    let response = client
+        .post(API_URL)
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("网络请求失败: {}", e))?;
+
+    // 检查响应状态
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(format!("服务器返回错误 ({}): {}", status, error_text));
     }
-    
-    let real_count = results.iter().filter(|r| r.result == "real").count();
-    
-    Ok(BatchDetectionResult {
-        results,
-        total_count: total,
-        real_count,
-        fake_count: total - real_count,
-        average_confidence: 0.85,
-    })
+
+    // 解析响应
+    let api_response: BatchDetectionResult = response
+        .json()
+        .await
+        .map_err(|e| format!("解析响应失败: {}", e))?;
+
+    Ok(api_response)
 }
 
 /// 获取支持的图片格式
 #[tauri::command]
-pub async fn get_supported_formats() -> Result<Vec<String>, String> {
-    Ok(vec![
-        "jpg".to_string(),
-        "jpeg".to_string(),
-        "png".to_string(),
-        "bmp".to_string(),
-        "webp".to_string(),
-    ])
+pub fn get_supported_formats(
+    config: State<'_, ConfigState>,
+) -> Result<Vec<String>, String> {
+    Ok(config.0.image.supported_formats.clone())
 }
 
 /// 验证图片有效性
 #[tauri::command]
-pub async fn validate_image(image_path: String) -> Result<bool, String> {
-    // TODO: 实现实际的图片验证逻辑
-    // 检查文件是否存在、格式是否正确等
-    Ok(true)
+pub fn validate_image(
+    image_path: String,
+    config: State<'_, ConfigState>,
+) -> Result<bool, String> {
+    use std::path::Path;
+
+    // 获取支持的图片格式
+    let supported_formats = get_supported_formats(config)?;
+
+    let path = Path::new(&image_path);
+
+    // 检查文件是否存在
+    if !path.exists() {
+        return Err(format!("文件不存在: {}", image_path));
+    }
+
+    // 检查是否是文件（不是目录）
+    if !path.is_file() {
+        return Err(format!("路径不是文件: {}", image_path));
+    }
+
+    // 检查文件扩展名
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_lowercase());
+
+    match extension {
+        Some(ext) => {
+            if supported_formats.contains(&ext) {
+                Ok(true)
+            } else {
+                Err(format!(
+                    "不支持的图片格式: {}. 支持的格式: {}",
+                    ext,
+                    supported_formats.join(", ")
+                ))
+            }
+        }
+        None => Err(format!("无法获取文件扩展名: {}", image_path)),
+    }
 }

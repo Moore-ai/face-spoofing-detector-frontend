@@ -3,12 +3,47 @@
  * 与Rust后端通信的API封装
  */
 
-// import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import type {
   SingleModeRequest,
   FusionModeRequest,
   BatchDetectionResult,
+  DetectionResultItem,
 } from "../types";
+
+// Rust返回的结果类型（使用下划线命名）
+interface RustDetectionResultItem {
+  id: string;
+  result: "real" | "fake";
+  confidence: number;
+  timestamp: string;
+  processing_time: number;
+}
+
+interface RustBatchDetectionResult {
+  results: RustDetectionResultItem[];
+  total_count: number;
+  real_count: number;
+  fake_count: number;
+  average_confidence: number;
+}
+
+// 转换Rust结果为前端格式
+function convertResult(rustResult: RustBatchDetectionResult): BatchDetectionResult {
+  return {
+    results: rustResult.results.map((item: RustDetectionResultItem): DetectionResultItem => ({
+      id: item.id,
+      result: item.result,
+      confidence: item.confidence,
+      timestamp: item.timestamp,
+      processingTime: item.processing_time,
+    })),
+    totalCount: rustResult.total_count,
+    realCount: rustResult.real_count,
+    fakeCount: rustResult.fake_count,
+    averageConfidence: rustResult.average_confidence,
+  };
+}
 
 /**
  * 单模态活体检测
@@ -18,23 +53,10 @@ import type {
 export async function detectSingleMode(
   request: SingleModeRequest
 ): Promise<BatchDetectionResult> {
-  // TODO: 实际调用Tauri命令
-  // return await invoke("detect_single_mode", { request });
-
-  // 模拟返回值
-  return {
-    results: request.images.map((_, index) => ({
-      id: `img_${index}_${Date.now()}`,
-      result: Math.random() > 0.5 ? "real" : "fake",
-      confidence: Math.random() * 0.4 + 0.6,
-      timestamp: new Date().toISOString(),
-      processingTime: Math.floor(Math.random() * 500) + 100,
-    })),
-    totalCount: request.images.length,
-    realCount: Math.floor(request.images.length / 2),
-    fakeCount: Math.ceil(request.images.length / 2),
-    averageConfidence: 0.85,
-  };
+  const result = await invoke<RustBatchDetectionResult>("detect_single_mode", {
+    request,
+  });
+  return convertResult(result);
 }
 
 /**
@@ -45,23 +67,10 @@ export async function detectSingleMode(
 export async function detectFusionMode(
   request: FusionModeRequest
 ): Promise<BatchDetectionResult> {
-  // TODO: 实际调用Tauri命令
-  // return await invoke("detect_fusion_mode", { request });
-
-  // 模拟返回值
-  return {
-    results: request.pairs.map((_, index) => ({
-      id: `fusion_${index}_${Date.now()}`,
-      result: Math.random() > 0.3 ? "real" : "fake",
-      confidence: Math.random() * 0.3 + 0.7,
-      timestamp: new Date().toISOString(),
-      processingTime: Math.floor(Math.random() * 800) + 200,
-    })),
-    totalCount: request.pairs.length,
-    realCount: Math.floor(request.pairs.length * 0.7),
-    fakeCount: Math.ceil(request.pairs.length * 0.3),
-    averageConfidence: 0.92,
-  };
+  const result = await invoke<RustBatchDetectionResult>("detect_fusion_mode", {
+    request,
+  });
+  return convertResult(result);
 }
 
 /**
@@ -72,25 +81,13 @@ export async function detectFusionMode(
  */
 export async function batchDetect(
   imagePaths: string[],
-  _mode: "single" | "fusion"
+  mode: "single" | "fusion"
 ): Promise<BatchDetectionResult> {
-  // TODO: 实际调用Tauri命令
-  // return await invoke("batch_detect", { imagePaths, mode });
-
-  // 模拟返回值
-  return {
-    results: imagePaths.map((_, index) => ({
-      id: `batch_${index}_${Date.now()}`,
-      result: Math.random() > 0.4 ? "real" : "fake",
-      confidence: Math.random() * 0.35 + 0.65,
-      timestamp: new Date().toISOString(),
-      processingTime: Math.floor(Math.random() * 600) + 150,
-    })),
-    totalCount: imagePaths.length,
-    realCount: Math.floor(imagePaths.length * 0.6),
-    fakeCount: Math.ceil(imagePaths.length * 0.4),
-    averageConfidence: 0.88,
-  };
+  const result = await invoke<RustBatchDetectionResult>("batch_detect", {
+    imagePaths,
+    mode,
+  });
+  return convertResult(result);
 }
 
 /**
@@ -98,10 +95,7 @@ export async function batchDetect(
  * @returns 支持的文件扩展名数组
  */
 export async function getSupportedFormats(): Promise<string[]> {
-  // TODO: 实际调用Tauri命令
-  // return await invoke("get_supported_formats");
-
-  return ["jpg", "jpeg", "png", "bmp", "webp"];
+  return await invoke<string[]>("get_supported_formats");
 }
 
 /**
@@ -109,9 +103,6 @@ export async function getSupportedFormats(): Promise<string[]> {
  * @param imagePath 图片路径
  * @returns 是否有效
  */
-export async function validateImage(_imagePath: string): Promise<boolean> {
-  // TODO: 实际调用Tauri命令
-  // return await invoke("validate_image", { imagePath });
-
-  return true;
+export async function validateImage(imagePath: string): Promise<boolean> {
+  return await invoke<boolean>("validate_image", { imagePath });
 }

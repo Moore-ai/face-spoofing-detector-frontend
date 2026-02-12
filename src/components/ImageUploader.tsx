@@ -1,5 +1,6 @@
 import type { ModalityType, ImageInfo } from "../types";
 import type { BaseProps } from "../types";
+import { getModalityFromFilename } from "../utils/imageUtils";
 
 interface ImageUploaderProps extends BaseProps {
   mode: "single" | "fusion";
@@ -36,8 +37,9 @@ export function ImageUploader({
 
       const reader = new FileReader();
       reader.onload = (e) => {
+        // 根据文件名判断模态类型，fusion模式下使用文件名前缀
         const modality: ModalityType = mode === "fusion"
-          ? (index % 2 === 0 ? "rgb" : "ir")
+          ? getModalityFromFilename(file.name)
           : "rgb";
 
         const imageInfo: ImageInfo = {
@@ -74,8 +76,9 @@ export function ImageUploader({
 
       const reader = new FileReader();
       reader.onload = (e) => {
+        // 根据文件名判断模态类型，fusion模式下使用文件名前缀
         const modality: ModalityType = mode === "fusion"
-          ? (index % 2 === 0 ? "rgb" : "ir")
+          ? getModalityFromFilename(file.name)
           : "rgb";
 
         const imageInfo: ImageInfo = {
