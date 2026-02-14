@@ -1,5 +1,3 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-
 mod config;
 mod util;
 
@@ -7,7 +5,6 @@ use config::{load_config, ConfigState};
 use util::{
     detect_fusion_mode,
     detect_single_mode,
-    batch_detect,
     get_supported_formats,
     validate_image
 };
@@ -27,7 +24,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             detect_single_mode,
             detect_fusion_mode,
-            batch_detect,
             get_supported_formats,
             validate_image,
         ])

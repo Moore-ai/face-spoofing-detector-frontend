@@ -1,3 +1,4 @@
+use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -32,12 +33,18 @@ impl AppConfig {
 }
 
 /// 获取配置文件路径
+/// 从.env文件中读取PROJECT_PATH环境变量，并拼接配置文件路径
 pub fn get_config_path() -> Result<PathBuf, String> {
-    // 获取项目根目录（src-tauri目录）
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .map_err(|_| "无法获取CARGO_MANIFEST_DIR环境变量".to_string())?;
+    // 加载.env文件
+    dotenv().ok();
 
-    let config_path = PathBuf::from(manifest_dir)
+    // 从环境变量获取项目路径
+    let project_path = std::env::var("PROJECT_PATH").map_err(|_| {
+        "无法获取PROJECT_PATH环境变量，请检查.env文件是否存在并正确配置".to_string()
+    })?;
+
+    let config_path = PathBuf::from(project_path)
+        .join("src-tauri")
         .join("config")
         .join("config.yaml");
 

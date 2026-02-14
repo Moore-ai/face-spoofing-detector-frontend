@@ -18,8 +18,6 @@ declare global {
         (cmd: "detect_single_mode", args: { request: SingleModeRequest }): Promise<BatchDetectionResult>;
         // 融合模式活体检测
         (cmd: "detect_fusion_mode", args: { request: FusionModeRequest }): Promise<BatchDetectionResult>;
-        // 批量检测
-        (cmd: "batch_detect", args: { imagePaths: string[]; mode: "single" | "fusion" }): Promise<BatchDetectionResult>;
         // 获取支持的格式
         (cmd: "get_supported_formats"): Promise<string[]>;
         // 验证图片

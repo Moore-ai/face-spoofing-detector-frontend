@@ -5,7 +5,7 @@ import type {
   BatchDetectionResult,
   DetectionStatus,
 } from "../types";
-import { detectSingleMode, detectFusionMode } from "../api/tauri";
+import { detectSingleMode, detectFusionMode, validateImage } from "../api/tauri";
 
 interface UseDetectionReturn {
   mode: DetectionMode;
@@ -43,16 +43,25 @@ function fileToBase64(file: File): Promise<string> {
  * 规则：文件名中下划线前部分为rgb_或ir_，下划线后部分相同的文件配对
  * 例如：rgb_001.jpg 和 ir_001.png 配对（标识符为001）
  */
-function pairImagesByFilename(images: ImageInfo[]): Array<{ rgb: ImageInfo; ir: ImageInfo }> {
+function pairImagesByFilename(images: ImageInfo[]): {
+  pairs: Array<{ rgb: ImageInfo; ir: ImageInfo }>;
+  unpairedRgb: ImageInfo[];
+  unpairedIr: ImageInfo[];
+  invalidFiles: ImageInfo[];
+} {
   const rgbImages = new Map<string, ImageInfo>();
   const irImages = new Map<string, ImageInfo>();
+  const invalidFiles: ImageInfo[] = [];
 
   // 按前缀分类图片
   for (const image of images) {
     const filename = image.file.name;
     const underscoreIndex = filename.indexOf("_");
 
-    if (underscoreIndex === -1) continue;
+    if (underscoreIndex === -1) {
+      invalidFiles.push(image);
+      continue;
+    }
 
     const prefix = filename.substring(0, underscoreIndex).toLowerCase();
     // 提取标识符（下划线后到扩展名前的部分）
@@ -63,19 +72,33 @@ function pairImagesByFilename(images: ImageInfo[]): Array<{ rgb: ImageInfo; ir: 
       rgbImages.set(identifier, image);
     } else if (prefix === "ir") {
       irImages.set(identifier, image);
+    } else {
+      invalidFiles.push(image);
     }
   }
 
   // 配对：找出同时存在rgb和ir的标识符
   const pairs: Array<{ rgb: ImageInfo; ir: ImageInfo }> = [];
+  const unpairedRgb: ImageInfo[] = [];
+  const unpairedIr: ImageInfo[] = [];
+
   for (const [identifier, rgbImg] of rgbImages) {
     const irImg = irImages.get(identifier);
     if (irImg) {
       pairs.push({ rgb: rgbImg, ir: irImg });
+    } else {
+      unpairedRgb.push(rgbImg);
     }
   }
 
-  return pairs;
+  // 找出未配对的IR图片
+  for (const [identifier, irImg] of irImages) {
+    if (!rgbImages.has(identifier)) {
+      unpairedIr.push(irImg);
+    }
+  }
+
+  return { pairs, unpairedRgb, unpairedIr, invalidFiles };
 }
 
 /**
@@ -111,6 +134,26 @@ export function useDetection(): UseDetectionReturn {
     setError(null);
 
     try {
+      // 验证所有图片
+      const validationResults = await Promise.all(
+        images.map(async (img) => {
+          try {
+            const isValid = await validateImage(img.preview);
+            return { image: img, isValid };
+          } catch {
+            return { image: img, isValid: false };
+          }
+        })
+      );
+
+      const invalidImages = validationResults
+        .filter((r) => !r.isValid)
+        .map((r) => r.image.file.name);
+
+      if (invalidImages.length > 0) {
+        throw new Error(`以下图片验证失败: ${invalidImages.join(", ")}`);
+      }
+
       let result: BatchDetectionResult;
 
       if (mode === "single") {
@@ -125,23 +168,43 @@ export function useDetection(): UseDetectionReturn {
         });
       } else {
         // 融合模式：按文件名规则配对RGB和IR图片
-        const imagePairs = pairImagesByFilename(images);
-        
-        if (imagePairs.length === 0) {
-          throw new Error("未找到可配对的RGB和IR图片，请确保文件名格式为rgb_xxx和ir_xxx");
+        const { pairs, unpairedRgb, unpairedIr, invalidFiles } = pairImagesByFilename(images);
+
+        // 检查是否有未配对的图片或格式错误的文件
+        const errors: string[] = [];
+
+        if (invalidFiles.length > 0) {
+          errors.push(`以下文件命名格式不正确: ${invalidFiles.map((img) => img.file.name).join(", ")}`);
+        }
+
+        if (unpairedRgb.length > 0) {
+          errors.push(`以下RGB图片缺少对应的IR图片: ${unpairedRgb.map((img) => img.file.name).join(", ")}`);
+        }
+
+        if (unpairedIr.length > 0) {
+          errors.push(`以下IR图片缺少对应的RGB图片: ${unpairedIr.map((img) => img.file.name).join(", ")}`);
+        }
+
+        if (pairs.length === 0) {
+          errors.push("未找到可配对的RGB和IR图片，请确保文件名格式为rgb_xxx和ir_xxx");
+        }
+
+        if (errors.length > 0) {
+          alert(errors.join("; "));
+          return;
         }
 
         // 将配对的图片转换为base64
-        const pairs = await Promise.all(
-          imagePairs.map(async ({ rgb, ir }) => ({
+        const pairsData = await Promise.all(
+          pairs.map(async ({ rgb, ir }) => ({
             rgb: await fileToBase64(rgb.file),
             ir: await fileToBase64(ir.file),
           }))
         );
-        
+
         result = await detectFusionMode({
           mode: "fusion",
-          pairs,
+          pairs: pairsData,
         });
       }
 

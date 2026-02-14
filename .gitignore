@@ -24,3 +24,10 @@ dist-ssr
 *.sw?
 
 nul
+
+AGENTS.md
+
+# Environment variables
+.env
+.env.local
+.env.*.local

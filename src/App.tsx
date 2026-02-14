@@ -16,7 +16,6 @@ function App(): React.ReactElement {
     images,
     addImages,
     removeImage,
-    clearImages,
     status,
     results,
     error,
@@ -69,7 +68,6 @@ function App(): React.ReactElement {
               type="button"
               className="btn btn-secondary"
               onClick={() => {
-                clearImages();
                 reset();
               }}
               disabled={isDetecting || (!hasImages && !hasResults)}
@@ -89,7 +87,7 @@ function App(): React.ReactElement {
       </main>
 
       <footer className="app-footer">
-        <p>© 2026 人脸活体检测系统 | Powered by Tauri + React</p>
+        <p>© 2026 人脸活体检测系统 | Made by Moore-ai</p>
       </footer>
     </div>
   );

@@ -74,23 +74,6 @@ export async function detectFusionMode(
 }
 
 /**
- * 批量检测（通用接口）
- * @param imagePaths 图片路径数组
- * @param mode 检测模式
- * @returns 批量检测结果
- */
-export async function batchDetect(
-  imagePaths: string[],
-  mode: "single" | "fusion"
-): Promise<BatchDetectionResult> {
-  const result = await invoke<RustBatchDetectionResult>("batch_detect", {
-    imagePaths,
-    mode,
-  });
-  return convertResult(result);
-}
-
-/**
  * 获取支持的图片格式
  * @returns 支持的文件扩展名数组
  */

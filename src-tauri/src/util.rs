@@ -51,37 +51,39 @@ pub async fn detect_single_mode(
     request: SingleModeRequest,
     client: State<'_, Client>,
 ) -> Result<BatchDetectionResult, String> {
-    // 后端 API 地址（可根据实际情况配置）
-    const API_URL: &str = "http://localhost:8000/infer/single";
-    
+    // 从环境变量获取后端 API 基础地址
+    let api_base_url = std::env::var("API_BASE_URL")
+        .unwrap_or_else(|_| "http://localhost:8000".to_string());
+    let api_url = format!("{}/infer/single", api_base_url);
+
     // 构建请求体
     let request_body = serde_json::json!({
         "mode": request.mode,
         "modality": request.modality,
         "images": request.images
     });
-    
+
     // 发送 POST 请求
     let response = client
-        .post(API_URL)
+        .post(&api_url)
         .json(&request_body)
         .send()
         .await
         .map_err(|e| format!("网络请求失败: {}", e))?;
-    
+
     // 检查响应状态
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_default();
         return Err(format!("服务器返回错误 ({}): {}", status, error_text));
     }
-    
+
     // 解析响应
     let api_response: BatchDetectionResult = response
         .json()
         .await
         .map_err(|e| format!("解析响应失败: {}", e))?;
-    
+
     Ok(api_response)
 }
 
@@ -91,8 +93,10 @@ pub async fn detect_fusion_mode(
     request: FusionModeRequest,
     client: State<'_, Client>,
 ) -> Result<BatchDetectionResult, String> {
-    // 后端 API 地址
-    const API_URL: &str = "http://localhost:8000/infer/fusion";
+    // 从环境变量获取后端 API 基础地址
+    let api_base_url = std::env::var("API_BASE_URL")
+        .unwrap_or_else(|_| "http://localhost:8000".to_string());
+    let api_url = format!("{}/infer/fusion", api_base_url);
 
     // 构建请求体
     let request_body = serde_json::json!({
@@ -102,47 +106,7 @@ pub async fn detect_fusion_mode(
 
     // 发送 POST 请求
     let response = client
-        .post(API_URL)
-        .json(&request_body)
-        .send()
-        .await
-        .map_err(|e| format!("网络请求失败: {}", e))?;
-
-    // 检查响应状态
-    if !response.status().is_success() {
-        let status = response.status();
-        let error_text = response.text().await.unwrap_or_default();
-        return Err(format!("服务器返回错误 ({}): {}", status, error_text));
-    }
-
-    // 解析响应
-    let api_response: BatchDetectionResult = response
-        .json()
-        .await
-        .map_err(|e| format!("解析响应失败: {}", e))?;
-
-    Ok(api_response)
-}
-
-/// 批量检测命令（通用接口）
-#[tauri::command]
-pub async fn batch_detect(
-    image_paths: Vec<String>,
-    mode: String,
-    client: State<'_, Client>,
-) -> Result<BatchDetectionResult, String> {
-    // 后端 API 地址
-    const API_URL: &str = "http://localhost:8000/infer/batch";
-
-    // 构建请求体
-    let request_body = serde_json::json!({
-        "image_paths": image_paths,
-        "mode": mode
-    });
-
-    // 发送 POST 请求
-    let response = client
-        .post(API_URL)
+        .post(&api_url)
         .json(&request_body)
         .send()
         .await

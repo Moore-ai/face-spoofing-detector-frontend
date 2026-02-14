@@ -39,9 +39,6 @@ export interface FusionModeRequest {
   }>;
 }
 
-// 检测请求联合类型
-export type DetectionRequest = SingleModeRequest | FusionModeRequest;
-
 // 单个检测结果
 export interface DetectionResultItem {
   id: string;
@@ -58,15 +55,6 @@ export interface BatchDetectionResult {
   realCount: number;
   fakeCount: number;
   averageConfidence: number;
-}
-
-// 应用状态
-export interface AppState {
-  mode: DetectionMode;
-  status: DetectionStatus;
-  images: ImageInfo[];
-  results: BatchDetectionResult | null;
-  error: string | null;
 }
 
 // 组件通用Props
