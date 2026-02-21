@@ -5,7 +5,7 @@ import type {
   BatchDetectionResult,
   DetectionStatus,
 } from "../types";
-import { detectSingleMode, detectFusionMode, validateImage } from "../api/tauri";
+import { detectSingleMode, detectFusionMode, getSupportedFormats } from "../api/tauri";
 
 interface UseDetectionReturn {
   mode: DetectionMode;
@@ -101,6 +101,20 @@ function pairImagesByFilename(images: ImageInfo[]): {
   return { pairs, unpairedRgb, unpairedIr, invalidFiles };
 }
 
+async function checkFormat(images: ImageInfo[]): Promise<string[]> {
+  const supportedFormats = await getSupportedFormats();
+  const invalidImages: string[] = [];
+
+  for (const img of images) {
+    const ext = img.file.name.split(".").pop()?.toLowerCase() || "";
+    if (!supportedFormats.includes(ext)) {
+      invalidImages.push(img.file.name);
+    }
+  }
+
+  return invalidImages;
+}
+
 /**
  * 检测状态管理Hook
  * 管理检测模式、图片列表、检测状态和结果
@@ -135,21 +149,7 @@ export function useDetection(): UseDetectionReturn {
 
     try {
       // 验证所有图片
-      const validationResults = await Promise.all(
-        images.map(async (img) => {
-          try {
-            const isValid = await validateImage(img.preview);
-            return { image: img, isValid };
-          } catch {
-            return { image: img, isValid: false };
-          }
-        })
-      );
-
-      const invalidImages = validationResults
-        .filter((r) => !r.isValid)
-        .map((r) => r.image.file.name);
-
+      const invalidImages = await checkFormat(images);
       if (invalidImages.length > 0) {
         throw new Error(`以下图片验证失败: ${invalidImages.join(", ")}`);
       }
@@ -211,7 +211,14 @@ export function useDetection(): UseDetectionReturn {
       setResults(result);
       setStatus("success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "检测失败");
+      let errorMsg = "检测失败";
+      if (err instanceof Error) {
+        errorMsg = err.message;
+      } else if (typeof err === "string") {
+        errorMsg = err;
+      }
+      
+      setError(errorMsg);
       setStatus("error");
     }
   }, [mode, images]);

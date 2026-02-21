@@ -26,6 +26,9 @@ dist-ssr
 nul
 
 AGENTS.md
+CLAUDE.md
+.claude/**
+css-to-tailwind-workspace/**
 
 # Environment variables
 .env
