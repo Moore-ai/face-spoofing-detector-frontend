@@ -13,7 +13,7 @@ export type ModalityType = "rgb" | "ir";
 export type LivenessResult = "real" | "fake";
 
 // 检测状态
-export type DetectionStatus = "idle" | "detecting" | "success" | "error";
+export type DetectionStatus = "idle" | "connecting" | "detecting" | "success" | "error";
 
 // 单张图片信息
 export interface ImageInfo {
@@ -27,15 +27,15 @@ export interface ImageInfo {
 export interface SingleModeRequest {
   mode: "single";
   modality: ModalityType;
-  images: string[]; // base64编码的图片
+  images: string[];
 }
 
 // 检测请求 - 融合模式
 export interface FusionModeRequest {
   mode: "fusion";
   pairs: Array<{
-    rgb: string; // base64编码的RGB图像
-    ir: string; // base64编码的IR图像
+    rgb: string;
+    ir: string;
   }>;
 }
 
@@ -45,7 +45,7 @@ export interface DetectionResultItem {
   result: LivenessResult;
   confidence: number;
   timestamp: string;
-  processingTime: number; // 毫秒
+  processingTime: number;
 }
 
 // 批量检测结果
@@ -60,4 +60,32 @@ export interface BatchDetectionResult {
 // 组件通用Props
 export interface BaseProps {
   className?: string;
+}
+
+// 用户WebSocket状态
+export interface UserState {
+  clientId: string | null;
+  taskId: string | null;
+  isConnected: boolean;
+  progress: number;
+  completedResults: DetectionResultItem[];
+}
+
+// WebSocket进度消息
+export interface WsProgressMessage {
+  type: "progress" | "task_completed" | "task_failed";
+  data: {
+    task_id: string;
+    status?: string;
+    message?: string;
+    result?: {
+      mode: string;
+      result: string;
+      confidence: number;
+      probabilities: number[];
+      processing_time: number;
+    };
+    total_items?: number;
+    processed_items?: number;
+  };
 }

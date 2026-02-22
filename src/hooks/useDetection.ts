@@ -1,11 +1,22 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type {
   DetectionMode,
   ImageInfo,
-  BatchDetectionResult,
   DetectionStatus,
+  UserState,
+  DetectionResultItem,
 } from "../types";
-import { detectSingleMode, detectFusionMode, getSupportedFormats } from "../api/tauri";
+import {
+  detectSingleModeAsync,
+  detectFusionModeAsync,
+  getSupportedFormats,
+  connectWebsocket,
+  listenWsProgress,
+  listenWsTaskCompleted,
+  listenWsTaskFailed,
+  type WsEventMessage,
+  AsyncTaskResponse,
+} from "../api/tauri";
 
 interface UseDetectionReturn {
   mode: DetectionMode;
@@ -15,21 +26,17 @@ interface UseDetectionReturn {
   removeImage: (id: string) => void;
   clearImages: () => void;
   status: DetectionStatus;
-  results: BatchDetectionResult | null;
   error: string | null;
+  userState: UserState;
   startDetection: () => Promise<void>;
   reset: () => void;
 }
 
-/**
- * 将File对象转换为base64字符串
- */
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // 移除data:image/xxx;base64,前缀
       const base64 = result.split(",")[1];
       resolve(base64);
     };
@@ -38,11 +45,6 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-/**
- * 按文件名规则配对RGB和IR图片
- * 规则：文件名中下划线前部分为rgb_或ir_，下划线后部分相同的文件配对
- * 例如：rgb_001.jpg 和 ir_001.png 配对（标识符为001）
- */
 function pairImagesByFilename(images: ImageInfo[]): {
   pairs: Array<{ rgb: ImageInfo; ir: ImageInfo }>;
   unpairedRgb: ImageInfo[];
@@ -53,7 +55,6 @@ function pairImagesByFilename(images: ImageInfo[]): {
   const irImages = new Map<string, ImageInfo>();
   const invalidFiles: ImageInfo[] = [];
 
-  // 按前缀分类图片
   for (const image of images) {
     const filename = image.file.name;
     const underscoreIndex = filename.indexOf("_");
@@ -64,9 +65,11 @@ function pairImagesByFilename(images: ImageInfo[]): {
     }
 
     const prefix = filename.substring(0, underscoreIndex).toLowerCase();
-    // 提取标识符（下划线后到扩展名前的部分）
     const extIndex = filename.lastIndexOf(".");
-    const identifier = filename.substring(underscoreIndex + 1, extIndex > underscoreIndex ? extIndex : undefined);
+    const identifier = filename.substring(
+      underscoreIndex + 1,
+      extIndex > underscoreIndex ? extIndex : undefined
+    );
 
     if (prefix === "rgb") {
       rgbImages.set(identifier, image);
@@ -77,7 +80,6 @@ function pairImagesByFilename(images: ImageInfo[]): {
     }
   }
 
-  // 配对：找出同时存在rgb和ir的标识符
   const pairs: Array<{ rgb: ImageInfo; ir: ImageInfo }> = [];
   const unpairedRgb: ImageInfo[] = [];
   const unpairedIr: ImageInfo[] = [];
@@ -91,7 +93,6 @@ function pairImagesByFilename(images: ImageInfo[]): {
     }
   }
 
-  // 找出未配对的IR图片
   for (const [identifier, irImg] of irImages) {
     if (!rgbImages.has(identifier)) {
       unpairedIr.push(irImg);
@@ -115,16 +116,21 @@ async function checkFormat(images: ImageInfo[]): Promise<string[]> {
   return invalidImages;
 }
 
-/**
- * 检测状态管理Hook
- * 管理检测模式、图片列表、检测状态和结果
- */
 export function useDetection(): UseDetectionReturn {
   const [mode, setMode] = useState<DetectionMode>("single");
   const [images, setImages] = useState<ImageInfo[]>([]);
   const [status, setStatus] = useState<DetectionStatus>("idle");
-  const [results, setResults] = useState<BatchDetectionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [userState, setUserState] = useState<UserState>({
+    clientId: null,
+    taskId: null,
+    isConnected: false,
+    progress: 0,
+    completedResults: [],
+  });
+
+  const unlistenFnsRef = useRef<Array<() => void>>([]);
 
   const addImages = useCallback((newImages: ImageInfo[]) => {
     setImages((prev) => [...prev, ...newImages]);
@@ -138,63 +144,174 @@ export function useDetection(): UseDetectionReturn {
     setImages([]);
   }, []);
 
+  const cleanupListeners = useCallback(() => {
+    unlistenFnsRef.current.forEach((fn) => fn());
+    unlistenFnsRef.current = [];
+  }, []);
+
+  const handleProgress = useCallback((wsMsg: WsEventMessage) => {
+    if (wsMsg.processed_items !== null && wsMsg.total_items !== null) {
+      const progress = Math.round(
+        (wsMsg.processed_items / wsMsg.total_items) * 100
+      );
+      setUserState((prev) => ({
+        ...prev,
+        progress,
+      }));
+    }
+
+    // 将当前结果添加到已完成列表
+    if (wsMsg.result) {
+      const result: DetectionResultItem = {
+        id: `${wsMsg.task_id}_${wsMsg.processed_items || 0}`,
+        result: wsMsg.result.result as "real" | "fake",
+        confidence: wsMsg.result.confidence,
+        timestamp: new Date().toISOString(),
+        processingTime: wsMsg.result.processing_time,
+      };
+      setUserState((prev) => ({
+        ...prev,
+        completedResults: [...prev.completedResults, result],
+      }));
+    }
+
+    if (wsMsg.message) {
+      console.log("进度:", wsMsg.message);
+    }
+  }, []);
+
+  const handleTaskCompleted = useCallback(
+    (wsMsg: WsEventMessage) => {
+      console.log("任务完成:", wsMsg);
+      setStatus("success");
+      setUserState((prev) => ({
+        ...prev,
+        taskId: null,
+        progress: 100,
+        isConnected: true,
+      }));
+    },
+    []
+  );
+
+  const handleTaskFailed = useCallback((wsMsg: WsEventMessage) => {
+    console.error("任务失败:", wsMsg);
+    setError(wsMsg.message || "检测失败");
+    setStatus("error");
+    setUserState((prev) => ({
+      ...prev,
+      taskId: null,
+    }));
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cleanupListeners();
+    };
+  }, [cleanupListeners]);
+
   const startDetection = useCallback(async () => {
     if (images.length === 0) {
       setError("请先上传图片");
       return;
     }
 
-    setStatus("detecting");
+    setStatus("connecting");
     setError(null);
+    setUserState((prev) => ({
+      ...prev,
+      progress: 0,
+      completedResults: [],
+    }));
 
     try {
-      // 验证所有图片
       const invalidImages = await checkFormat(images);
       if (invalidImages.length > 0) {
         throw new Error(`以下图片验证失败: ${invalidImages.join(", ")}`);
       }
 
-      let result: BatchDetectionResult;
+      // 每次检测都重新创建监听器，确保能接收事件
+      cleanupListeners();
+
+      const unlistenProgress = await listenWsProgress(handleProgress);
+      const unlistenCompleted = await listenWsTaskCompleted(handleTaskCompleted);
+      const unlistenFailed = await listenWsTaskFailed(handleTaskFailed);
+
+      unlistenFnsRef.current = [
+        unlistenProgress,
+        unlistenCompleted,
+        unlistenFailed,
+      ];
+
+      let clientId = userState.clientId;
+
+      if (!clientId) {
+        clientId = await connectWebsocket();
+        setUserState((prev) => ({
+          ...prev,
+          clientId,
+          isConnected: true,
+        }));
+      }
+
+      setStatus("detecting");
+
+      let taskResponse: AsyncTaskResponse;
 
       if (mode === "single") {
-        // 单模态模式：将所有图片转换为base64
         const base64Images = await Promise.all(
           images.map((img) => fileToBase64(img.file))
         );
-        result = await detectSingleMode({
-          mode: "single",
-          modality: "rgb",
-          images: base64Images,
-        });
+        taskResponse = await detectSingleModeAsync(
+          {
+            mode: "single",
+            modality: "rgb",
+            images: base64Images,
+          },
+          clientId
+        );
       } else {
-        // 融合模式：按文件名规则配对RGB和IR图片
-        const { pairs, unpairedRgb, unpairedIr, invalidFiles } = pairImagesByFilename(images);
+        const { pairs, unpairedRgb, unpairedIr, invalidFiles } =
+          pairImagesByFilename(images);
 
-        // 检查是否有未配对的图片或格式错误的文件
         const errors: string[] = [];
 
         if (invalidFiles.length > 0) {
-          errors.push(`以下文件命名格式不正确: ${invalidFiles.map((img) => img.file.name).join(", ")}`);
+          errors.push(
+            `以下文件命名格式不正确: ${invalidFiles
+              .map((img) => img.file.name)
+              .join(", ")}`
+          );
         }
 
         if (unpairedRgb.length > 0) {
-          errors.push(`以下RGB图片缺少对应的IR图片: ${unpairedRgb.map((img) => img.file.name).join(", ")}`);
+          errors.push(
+            `以下RGB图片缺少对应的IR图片: ${unpairedRgb
+              .map((img) => img.file.name)
+              .join(", ")}`
+          );
         }
 
         if (unpairedIr.length > 0) {
-          errors.push(`以下IR图片缺少对应的RGB图片: ${unpairedIr.map((img) => img.file.name).join(", ")}`);
+          errors.push(
+            `以下IR图片缺少对应的RGB图片: ${unpairedIr
+              .map((img) => img.file.name)
+              .join(", ")}`
+          );
         }
 
         if (pairs.length === 0) {
-          errors.push("未找到可配对的RGB和IR图片，请确保文件名格式为rgb_xxx和ir_xxx");
+          errors.push(
+            "未找到可配对的RGB和IR图片，请确保文件名格式为rgb_xxx和ir_xxx"
+          );
         }
 
         if (errors.length > 0) {
-          alert(errors.join("; "));
+          setError(errors.join("; ").substring(0, 20));
+          setStatus("idle");
           return;
         }
 
-        // 将配对的图片转换为base64
         const pairsData = await Promise.all(
           pairs.map(async ({ rgb, ir }) => ({
             rgb: await fileToBase64(rgb.file),
@@ -202,33 +319,59 @@ export function useDetection(): UseDetectionReturn {
           }))
         );
 
-        result = await detectFusionMode({
-          mode: "fusion",
-          pairs: pairsData,
-        });
+        taskResponse = await detectFusionModeAsync(
+          {
+            mode: "fusion",
+            pairs: pairsData,
+          },
+          clientId
+        );
       }
 
-      setResults(result);
-      setStatus("success");
+      if (!taskResponse.taskId) {
+        throw new Error(taskResponse.message || "创建任务失败");
+      }
+
+      setUserState((prev) => ({
+        ...prev,
+        taskId: taskResponse.taskId,
+      }));
     } catch (err) {
       let errorMsg = "检测失败";
       if (err instanceof Error) {
         errorMsg = err.message;
       } else if (typeof err === "string") {
         errorMsg = err;
+      } else if (err && typeof err === "object" && "message" in err) {
+        errorMsg = String((err as { message: unknown }).message);
       }
-      
+
+      if (
+        errorMsg.includes("网络请求失败") ||
+        errorMsg.includes("Failed to fetch") ||
+        errorMsg.includes("error sending request")
+      ) {
+        errorMsg = "无法连接后端服务，请确保后端已启动";
+      }
+
       setError(errorMsg);
       setStatus("error");
     }
-  }, [mode, images]);
+  }, [mode, images, userState.clientId, handleProgress, handleTaskCompleted, handleTaskFailed]);
 
   const reset = useCallback(() => {
+    cleanupListeners();
     setImages([]);
-    setResults(null);
     setStatus("idle");
     setError(null);
-  }, []);
+    setUserState({
+      clientId: userState.clientId,
+      taskId: null,
+      isConnected: !!userState.clientId,
+      progress: 0,
+      completedResults: [],
+    });
+  }, [cleanupListeners, userState.clientId]);
 
   return {
     mode,
@@ -238,8 +381,8 @@ export function useDetection(): UseDetectionReturn {
     removeImage,
     clearImages,
     status,
-    results,
     error,
+    userState,
     startDetection,
     reset,
   };

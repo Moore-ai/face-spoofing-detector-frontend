@@ -43,7 +43,7 @@ export function ImageUploader({
           : "rgb";
 
         const imageInfo: ImageInfo = {
-          id: `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+          id: `${Date.now()}_${index}_${Math.random().toString(36).substring(2, 9)}`,
           file,
           preview: e.target?.result as string,
           modality,

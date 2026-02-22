@@ -5,10 +5,6 @@ import { ResultPanel } from "./components/ResultPanel";
 import { useDetection } from "./hooks/useDetection";
 import "./App.css";
 
-/**
- * 主应用组件
- * 人脸活体检测系统前端界面
- */
 function App(): React.ReactElement {
   const {
     mode,
@@ -17,15 +13,17 @@ function App(): React.ReactElement {
     addImages,
     removeImage,
     status,
-    results,
     error,
+    userState,
     startDetection,
     reset,
   } = useDetection();
 
-  const isDetecting = status === "detecting";
+  const isDetecting = status === "detecting" || status === "connecting";
   const hasImages = images.length > 0;
-  const hasResults = results !== null && results.totalCount > 0;
+  const hasResults = userState.completedResults.length > 0;
+
+  const isDisabled = isDetecting || userState.taskId !== null;
 
   return (
     <div className="app">
@@ -36,7 +34,7 @@ function App(): React.ReactElement {
           <ModeSelector
             currentMode={mode}
             onModeChange={setMode}
-            disabled={isDetecting || hasImages}
+            disabled={isDisabled}
           />
 
           <ImageUploader
@@ -44,7 +42,7 @@ function App(): React.ReactElement {
             images={images}
             onImagesAdd={addImages}
             onImageRemove={removeImage}
-            disabled={isDetecting}
+            disabled={isDisabled}
           />
 
           {error && (
@@ -59,18 +57,20 @@ function App(): React.ReactElement {
               type="button"
               className="btn btn-primary"
               onClick={startDetection}
-              disabled={!hasImages || isDetecting}
+              disabled={!hasImages || isDisabled}
             >
-              {isDetecting ? "检测中..." : "开始检测"}
+              {status === "connecting"
+                ? "连接中..."
+                : status === "detecting"
+                  ? `检测中 ${userState.progress}%`
+                  : "开始检测"}
             </button>
 
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => {
-                reset();
-              }}
-              disabled={isDetecting || (!hasImages && !hasResults)}
+              onClick={reset}
+              disabled={isDisabled || (!hasImages && !hasResults)}
             >
               清空重置
             </button>
@@ -79,9 +79,9 @@ function App(): React.ReactElement {
 
         <div className="result-container">
           <ResultPanel
-            results={results}
             images={images}
             isLoading={isDetecting}
+            userState={userState}
           />
         </div>
       </main>

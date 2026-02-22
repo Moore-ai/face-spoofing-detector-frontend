@@ -9,19 +9,24 @@ import type {
   BatchDetectionResult,
 } from "../types";
 
-// 声明Tauri命令接口（由Rust端实现）
+import type {
+  RustBatchDetectionResult,
+  RustAsyncTaskResponse,
+  RustTaskStatusResponse,
+} from "./tauri"
+
 declare global {
   interface Window {
     __TAURI__: {
       invoke: {
-        // 单模态活体检测
-        (cmd: "detect_single_mode", args: { request: SingleModeRequest }): Promise<BatchDetectionResult>;
-        // 融合模式活体检测
-        (cmd: "detect_fusion_mode", args: { request: FusionModeRequest }): Promise<BatchDetectionResult>;
-        // 获取支持的格式
+        (cmd: "detect_single_mode", args: { request: SingleModeRequest }): Promise<RustBatchDetectionResult>;
+        (cmd: "detect_fusion_mode", args: { request: FusionModeRequest }): Promise<RustBatchDetectionResult>;
+        (cmd: "detect_single_mode_async", args: { request: SingleModeRequest; clientId: string }): Promise<RustAsyncTaskResponse>;
+        (cmd: "detect_fusion_mode_async", args: { request: FusionModeRequest; clientId: string }): Promise<RustAsyncTaskResponse>;
         (cmd: "get_supported_formats"): Promise<string[]>;
-        // 验证图片
         (cmd: "validate_image", args: { imagePath: string }): Promise<boolean>;
+        (cmd: "connect_websocket"): Promise<string>;
+        (cmd: "get_task_status", args: { taskId: string }): Promise<RustTaskStatusResponse>;
       };
     };
   }
