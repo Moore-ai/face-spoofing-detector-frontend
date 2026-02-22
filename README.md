@@ -34,6 +34,10 @@
 .
 ├── .env                          # 环境变量（本地配置，不提交）
 ├── .env.example                  # 环境变量示例
+├── scripts/                      # 环境配置脚本
+│   ├── setup-env.js              # 跨平台 Node.js 配置脚本
+│   ├── setup-env.sh              # Shell 脚本（macOS/Linux）
+│   └── setup-env-windows.bat     # 批处理脚本（Windows）
 ├── src/                          # 前端源代码
 │   ├── api/                      # Tauri API 封装
 │   │   ├── tauri.ts
@@ -82,24 +86,35 @@ git clone <repository-url>
 cd face-spoofing-detector-frontend
 ```
 
-### 2. 安装依赖
+### 2. 使用环境配置脚本（推荐）
+
+项目提供了跨平台的环境配置脚本，自动检查依赖并创建配置文件：
+
+```bash
+npm run setup:env
+```
+
+脚本会自动完成：
+- 检查 Node.js、Rust、Python 是否安装
+- 创建 `.env` 文件并设置正确的 `PROJECT_PATH`
+- 安装前端依赖（如未安装）
+- （Linux）检查 Tauri 编译依赖
+
+### 3. 手动配置（可选）
+
+如果不使用脚本，可手动配置：
 
 ```bash
 npm install
-```
-
-### 3. 配置环境变量
-
-复制环境变量示例文件并修改：
-
-```bash
 cp .env.example .env
 ```
 
 编辑 `.env` 文件：
 
 ```env
-# 修改PROJECT_PATH
+# 修改 PROJECT_PATH 为项目绝对路径
+# Windows: PROJECT_PATH=E:\\heli_code\\frontend
+# macOS/Linux: PROJECT_PATH=/home/user/frontend
 PROJECT_PATH=<项目路径>
 
 # 后端 API 地址（根据实际修改）
@@ -173,6 +188,9 @@ image:
 ### 常用命令
 
 ```bash
+# 环境配置
+npm run setup:env
+
 # 开发模式
 npm run tauri dev
 
