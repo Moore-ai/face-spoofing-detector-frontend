@@ -6,7 +6,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-v4-06B6D4?logo=tailwindcss)](https://tailwindcss.com/)
 [![Rust](https://img.shields.io/badge/Rust-2021-000000?logo=rust)](https://www.rust-lang.org/)
 
-基于 Tauri + React + TypeScript 开发的人脸活体检测桌面应用前端。支持单模态（RGB/IR）和融合模式（RGB+IR）检测，具有《美观的》风格界面。
+基于 Tauri + React + TypeScript 开发的人脸活体检测桌面应用前端。支持单模态（RGB/IR）和融合模式（RGB+IR）检测，具有 VS Code 风格的深色主题界面。
 
 ## ✨ 功能特性
 
@@ -14,7 +14,8 @@
 - 📁 **批量处理**：可一次性上传多张图片进行检测（最多 50 张）
 - 🖼️ **实时预览**：上传图片即时预览，支持拖拽上传
 - 📊 **结果可视化**：置信度条形图、统计面板、详细结果卡片
-- 🎨 **精美界面**：Apple-inspired 设计风格，响应式布局
+- 🎨 **VS Code 风格**：深色主题界面，左侧活动栏导航，现代化布局
+- 🔄 **三栏布局**：活动栏、侧边栏和主内容区紧密排列，支持独立滚动
 - ⚙️ **灵活配置**：通过环境变量和 YAML 配置文件自定义参数
 - 🔒 **文件验证**：自动检测文件格式和有效性
 
@@ -43,6 +44,7 @@
 │   │   ├── tauri.ts
 │   │   └── commands.d.ts
 │   ├── components/               # React 组件
+│   │   ├── ActivityBar.tsx
 │   │   ├── Header.tsx
 │   │   ├── ModeSelector.tsx
 │   │   ├── ImageUploader.tsx
