@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { ActivityBar, type NavItemId } from "./components/ActivityBar";
-import { ModeSelector } from "./components/ModeSelector";
-import { ImageUploader } from "./components/ImageUploader";
-import { ResultPanel } from "./components/ResultPanel";
+import { ActivityBar, type NavItemId } from "./components/layout/ActivityBar";
+import { ModeSelector } from "./components/detection/ModeSelector";
+import { ImageUploader } from "./components/detection/ImageUploader";
+import { ResultPanel } from "./components/detection/ResultPanel";
 import { useDetection } from "./hooks/useDetection";
 import "./App.css";
 
@@ -26,7 +26,8 @@ function App(): React.ReactElement {
   const hasImages = images.length > 0;
   const hasResults = userState.completedResults.length > 0;
 
-  const isDisabled = isDetecting || userState.taskId !== null;
+  // 检测进行中时禁用用户交互（防止重复提交）
+  const isInteractionDisabled = isDetecting || userState.taskId !== null;
 
   return (
     <div className="app">
@@ -41,7 +42,7 @@ function App(): React.ReactElement {
               <ModeSelector
                 currentMode={mode}
                 onModeChange={setMode}
-                disabled={isDisabled}
+                disabled={isInteractionDisabled}
               />
 
               <ImageUploader
@@ -49,7 +50,7 @@ function App(): React.ReactElement {
                 images={images}
                 onImagesAdd={addImages}
                 onImageRemove={removeImage}
-                disabled={isDisabled}
+                disabled={isInteractionDisabled}
               />
 
               {error && (
@@ -64,7 +65,7 @@ function App(): React.ReactElement {
                   type="button"
                   className="btn btn-primary"
                   onClick={startDetection}
-                  disabled={!hasImages || isDisabled}
+                  disabled={!hasImages || isInteractionDisabled}
                 >
                   {status === "connecting"
                     ? "连接中..."
@@ -77,7 +78,7 @@ function App(): React.ReactElement {
                   type="button"
                   className="btn btn-secondary"
                   onClick={reset}
-                  disabled={isDisabled || (!hasImages && !hasResults)}
+                  disabled={isInteractionDisabled || (!hasImages && !hasResults)}
                 >
                   清空重置
                 </button>

@@ -1,6 +1,6 @@
-import type { DetectionResultItem } from "../types";
-import type { BaseProps } from "../types";
-import { ConfidenceBar } from "./ConfidenceBar";
+import type { DetectionResultItem } from "../../types";
+import type { BaseProps } from "../../types";
+import { ConfidenceBar } from "../ui/ConfidenceBar";
 
 interface DetectionCardProps extends BaseProps {
   result: DetectionResultItem;

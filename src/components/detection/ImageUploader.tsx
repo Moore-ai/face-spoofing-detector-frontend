@@ -1,6 +1,6 @@
-import type { ModalityType, ImageInfo } from "../types";
-import type { BaseProps } from "../types";
-import { getModalityFromFilename } from "../utils/imageUtils";
+import type { ModalityType, ImageInfo } from "../../types";
+import type { BaseProps } from "../../types";
+import { getModalityFromFilename } from "../../utils/imageUtils";
 
 interface ImageUploaderProps extends BaseProps {
   mode: "single" | "fusion";
@@ -63,7 +63,7 @@ export function ImageUploader({
     event.preventDefault();
     if (disabled) return;
 
-    const files = Array.from(event.dataTransfer.files).filter(file =>
+    const files = Array.from(event.dataTransfer.files).filter((file) =>
       file.type.startsWith("image/")
     );
 

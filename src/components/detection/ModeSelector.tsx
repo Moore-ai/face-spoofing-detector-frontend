@@ -1,9 +1,29 @@
-import type { DetectionMode, BaseProps } from "../types";
+import type { DetectionMode, BaseProps } from "../../types";
+
+interface ModeOption {
+  id: DetectionMode;
+  label: string;
+  description: string;
+}
+
+export const MODE_OPTIONS: Readonly<ModeOption[]> = [
+  {
+    id: "single",
+    label: "单模态模式",
+    description: "处理RGB或IR单模态图像",
+  },
+  {
+    id: "fusion",
+    label: "融合模式",
+    description: "处理RGB+IR双模态融合",
+  },
+] as const;
 
 interface ModeSelectorProps extends BaseProps {
   currentMode: DetectionMode;
   onModeChange: (mode: DetectionMode) => void;
   disabled?: boolean;
+  modeOptions?: Readonly<ModeOption[]>;
 }
 
 /**
@@ -14,26 +34,14 @@ export function ModeSelector({
   currentMode,
   onModeChange,
   disabled = false,
+  modeOptions = MODE_OPTIONS,
   className = "",
 }: ModeSelectorProps): React.ReactElement {
-  const modes: Array<{ id: DetectionMode; label: string; description: string }> = [
-    {
-      id: "single",
-      label: "单模态模式",
-      description: "处理RGB或IR单模态图像",
-    },
-    {
-      id: "fusion",
-      label: "融合模式",
-      description: "处理RGB+IR双模态融合",
-    },
-  ];
-
   return (
     <div className={`mode-selector ${className}`}>
       <h3 className="mode-selector-title">选择检测模式</h3>
       <div className="mode-options">
-        {modes.map((mode) => (
+        {modeOptions.map((mode) => (
           <button
             key={mode.id}
             type="button"

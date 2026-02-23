@@ -44,20 +44,25 @@
 │   │   ├── tauri.ts
 │   │   └── commands.d.ts
 │   ├── components/               # React 组件
-│   │   ├── ActivityBar.tsx
-│   │   ├── Header.tsx
-│   │   ├── ModeSelector.tsx
-│   │   ├── ImageUploader.tsx
-│   │   ├── ResultPanel.tsx
-│   │   ├── DetectionCard.tsx
-│   │   ├── ConfidenceBar.tsx
-│   │   └── index.ts
+│   │   ├── layout/               # 布局组件
+│   │   │   ├── ActivityBar.tsx   # 活动栏
+│   │   │   └── Header.tsx        # 应用头部
+│   │   ├── ui/                   # 通用 UI 组件
+│   │   │   └── ConfidenceBar.tsx # 置信度条
+│   │   ├── detection/            # 检测相关组件
+│   │   │   ├── ModeSelector.tsx       # 模式选择器
+│   │   │   ├── ImageUploader.tsx      # 图片上传
+│   │   │   ├── ResultPanel.tsx        # 结果面板
+│   │   │   ├── ResultPanelStates.tsx  # 面板状态组件
+│   │   │   └── DetectionCard.tsx      # 结果卡片
+│   │   └── index.ts            # 组件统一导出
 │   ├── hooks/                    # 自定义 Hooks
 │   │   └── useDetection.ts
 │   ├── types/                    # 类型定义
 │   │   └── index.ts
 │   ├── utils/                    # 工具函数
-│   │   └── imageUtils.ts
+│   │   ├── imageUtils.ts
+│   │   └── stats.ts
 │   ├── App.tsx
 │   ├── App.css
 │   └── main.tsx

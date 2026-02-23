@@ -1,4 +1,4 @@
-import type { BaseProps } from "../types";
+import type { BaseProps } from "../../types";
 
 interface HeaderProps extends BaseProps {
   title?: string;
