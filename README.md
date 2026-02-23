@@ -15,6 +15,7 @@
 - 🖼️ **实时预览**：上传图片即时预览，支持拖拽上传
 - 📊 **结果可视化**：置信度条形图、统计面板、详细结果卡片
 - 🎨 **VS Code 风格**：深色主题界面，左侧活动栏导航，现代化布局
+- 🖥️ **自定义窗口**：完整的自定义标题栏，包含最小化、最大化和关闭按钮
 - 🔄 **三栏布局**：活动栏、侧边栏和主内容区紧密排列，支持独立滚动
 - ⚙️ **灵活配置**：通过环境变量和 YAML 配置文件自定义参数
 - 🔒 **文件验证**：自动检测文件格式和有效性
@@ -46,7 +47,8 @@
 │   ├── components/               # React 组件
 │   │   ├── layout/               # 布局组件
 │   │   │   ├── ActivityBar.tsx   # 活动栏
-│   │   │   └── Header.tsx        # 应用头部
+│   │   │   ├── Header.tsx        # 应用头部
+│   │   │   └── TitleBar.tsx      # 自定义标题栏
 │   │   ├── ui/                   # 通用 UI 组件
 │   │   │   └── ConfidenceBar.tsx # 置信度条
 │   │   ├── detection/            # 检测相关组件
@@ -72,8 +74,11 @@
 │   │   ├── lib.rs
 │   │   ├── util.rs
 │   │   └── config.rs
+│   ├── capabilities/             # 权限配置
+│   │   └── default.json          # 窗口控制权限配置
 │   ├── config/
 │   │   └── config.yaml
+│   ├── tauri.conf.json           # Tauri 应用配置（包含装饰设置）
 │   └── Cargo.toml
 └── package.json
 ```

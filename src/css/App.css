@@ -65,7 +65,7 @@
 
 body {
   font-family: "SF Mono", "Monaco", "Menlo", "Ubuntu Mono", "Consolas", monospace;
-  background: var(--vscode-bg);
+  background: transparent;
   color: var(--vscode-text-primary);
   min-height: 100vh;
   line-height: 1.6;
@@ -78,6 +78,9 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--vscode-bg);
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   overflow: hidden;
 }
 

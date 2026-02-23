@@ -7,6 +7,7 @@
 export { ActivityBar } from "./layout/ActivityBar";
 export type { NavItemId, NavItem, ActivityBarProps } from "./layout/ActivityBar";
 export { Header } from "./layout/Header";
+export { TitleBar } from "./layout/TitleBar";
 
 // UI 组件
 export { ConfidenceBar } from "./ui/ConfidenceBar";

@@ -12,9 +12,17 @@
   "app": {
     "windows": [
       {
-        "title": "frontend",
-        "width": 800,
-        "height": 600
+        "title": "",
+        "width": 1200,
+        "height": 800,
+        "decorations": false,
+        "transparent": true,
+        "visible": true,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "minWidth": 800,
+        "minHeight": 600
       }
     ],
     "security": {

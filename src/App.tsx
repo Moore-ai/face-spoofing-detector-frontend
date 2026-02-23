@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { TitleBar } from "./components/layout/TitleBar";
 import { ActivityBar, type NavItemId } from "./components/layout/ActivityBar";
 import { ModeSelector } from "./components/detection/ModeSelector";
 import { ImageUploader } from "./components/detection/ImageUploader";
 import { ResultPanel } from "./components/detection/ResultPanel";
 import { useDetection } from "./hooks/useDetection";
-import "./App.css";
+import "./css/App.css";
 
 function App(): React.ReactElement {
   const [activeTab, setActiveTab] = useState<NavItemId | null>("work");
@@ -31,6 +32,9 @@ function App(): React.ReactElement {
 
   return (
     <div className="app">
+      {/* ===== 自定义标题栏 ===== */}
+      <TitleBar />
+
       <div className="vscode-layout">
         {/* ===== 活动栏 (Activity Bar) ===== */}
         <ActivityBar activeTab={activeTab} onTabChange={setActiveTab} />

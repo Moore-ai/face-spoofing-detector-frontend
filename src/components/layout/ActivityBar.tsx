@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import "../../App.css";
+import "../../css/App.css";
 
 /**
  * 导航项 ID 类型
