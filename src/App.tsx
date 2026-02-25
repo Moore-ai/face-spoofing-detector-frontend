@@ -4,10 +4,13 @@ import { ActivityBar, type NavItemId } from "./components/layout/ActivityBar";
 import { ModeSelector } from "./components/detection/ModeSelector";
 import { ImageUploader } from "./components/detection/ImageUploader";
 import { ResultPanel } from "./components/detection/ResultPanel";
+import { ActivationPage } from "./components/activation/ActivationPage";
 import { useDetection } from "./hooks/useDetection";
 import "./css/App.css";
 
 function App(): React.ReactElement {
+  // 每次启动都需要重新激活
+  const [isActivated, setIsActivated] = useState(false);
   const [activeTab, setActiveTab] = useState<NavItemId | null>("work");
 
   const {
@@ -30,6 +33,11 @@ function App(): React.ReactElement {
   // 检测进行中时禁用用户交互（防止重复提交）
   const isInteractionDisabled = isDetecting || userState.taskId !== null;
 
+  // 如果未激活，显示激活页面
+  if (!isActivated) {
+    return <ActivationPage onActivate={() => setIsActivated(true)} />;
+  }
+
   return (
     <div className="app">
       {/* ===== 自定义标题栏 ===== */}
@@ -46,7 +54,7 @@ function App(): React.ReactElement {
               <ModeSelector
                 currentMode={mode}
                 onModeChange={setMode}
-                disabled={isInteractionDisabled}
+                disabled={isInteractionDisabled || hasImages}
               />
 
               <ImageUploader

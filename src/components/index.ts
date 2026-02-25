@@ -19,3 +19,6 @@ export { ImageUploader } from "./detection/ImageUploader";
 export { DetectionCard } from "./detection/DetectionCard";
 export { ResultPanel } from "./detection/ResultPanel";
 export { LoadingState, EmptyState, ResultsView } from "./detection/ResultPanelStates";
+
+// Activation 组件
+export { ActivationPage } from "./activation/ActivationPage";

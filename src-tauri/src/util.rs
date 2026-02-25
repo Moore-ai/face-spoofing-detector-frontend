@@ -434,3 +434,50 @@ pub fn validate_image(
         None => Err(format!("无法获取文件扩展名: {}", image_path)),
     }
 }
+
+// ===== 激活码验证 =====
+
+/// 激活码验证请求
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ActivateRequest {
+    pub activation_code: String,
+}
+
+/// 激活码验证响应
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ActivateResponse {
+    pub success: bool,
+    pub message: String,
+    pub expires_at: Option<String>,
+}
+
+/// 验证激活码
+#[tauri::command]
+pub async fn activate_license(
+    request: ActivateRequest,
+) -> Result<ActivateResponse, String> {
+    // 这里实现实际的激活码验证逻辑
+    // 目前返回模拟成功响应
+
+    // 简单的格式验证：ACT-XXXXXXXX-XXXXXXXX
+    let code = &request.activation_code;
+    if code.len() != 21 {
+        return Ok(ActivateResponse {
+            success: false,
+            message: "激活码格式不正确".to_string(),
+            expires_at: None,
+        });
+    }
+
+    // 模拟网络请求延迟
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+    // TODO: 实际项目中应该调用后端 API 验证激活码
+    // 例如：POST /api/activate { activation_code: "..." }
+
+    Ok(ActivateResponse {
+        success: true,
+        message: "激活成功".to_string(),
+        expires_at: None,
+    })
+}

@@ -221,3 +221,29 @@ export async function listenWsDisconnected(callback: () => void): Promise<Unlist
     callback();
   });
 }
+
+// ===== 激活码验证 =====
+
+export interface ActivateRequest {
+  activationCode: string;
+}
+
+export interface ActivateResponse {
+  success: boolean;
+  message: string;
+  expiresAt?: string;
+}
+
+export async function activateLicense(request: ActivateRequest): Promise<ActivateResponse> {
+  if (!isTauri()) {
+    // 开发模式：模拟验证
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return {
+      success: true,
+      message: "激活成功",
+    };
+  }
+  return await invoke<ActivateResponse>("activate_license", {
+    request,
+  });
+}

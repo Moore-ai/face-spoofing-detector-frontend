@@ -1,3 +1,4 @@
+import { ActivateRequest } from './tauri';
 /**
  * Tauri命令声明
  * Rust后端接口定义
@@ -13,6 +14,8 @@ import type {
   RustBatchDetectionResult,
   RustAsyncTaskResponse,
   RustTaskStatusResponse,
+  ActivateRequest,
+  ActivateResponse,
 } from "./tauri"
 
 declare global {
@@ -27,6 +30,7 @@ declare global {
         (cmd: "validate_image", args: { imagePath: string }): Promise<boolean>;
         (cmd: "connect_websocket"): Promise<string>;
         (cmd: "get_task_status", args: { taskId: string }): Promise<RustTaskStatusResponse>;
+        (cmd: "activate_license", args: { request: ActivateRequest }): Promise<ActivateResponse>;
       };
     };
   }

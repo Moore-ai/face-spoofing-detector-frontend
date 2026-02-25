@@ -1,0 +1,641 @@
+/* ===== 激活码认证页面 - VSCode 风格 ===== */
+
+.activation-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  background: var(--vscode-bg);
+}
+
+/* ----- 背景效果 ----- */
+.activation-bg {
+  position: absolute;
+  inset: 48px 0 0 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.activation-bg-gradient {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(55, 148, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(137, 209, 133, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(30, 30, 30, 0.9) 0%, var(--vscode-bg) 100%);
+}
+
+.activation-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(62, 62, 66, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(62, 62, 66, 0.15) 1px, transparent 1px);
+  background-size: 50px 50px;
+  mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%);
+}
+
+.activation-particle {
+  position: absolute;
+  background: rgba(55, 148, 255, 0.5);
+  border-radius: 50%;
+  animation: particle-float linear infinite;
+  box-shadow: 0 0 8px rgba(55, 148, 255, 0.4);
+}
+
+@keyframes particle-float {
+  0%, 100% {
+    opacity: 0;
+    transform: translateY(0) scale(0);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1);
+  }
+  90% {
+    opacity: 1;
+  }
+}
+
+/* ----- 主容器 ----- */
+.activation-container {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 32px;
+  padding: 24px;
+  animation: container-fade-in 0.6s ease-out;
+}
+
+@keyframes container-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ----- Logo 区域 ----- */
+.activation-logo {
+  text-align: center;
+  animation: logo-fade-in 0.8s ease-out 0.2s both;
+}
+
+@keyframes logo-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.logo-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  background: linear-gradient(135deg, var(--vscode-blue) 0%, var(--vscode-blue-dark) 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 8px 24px rgba(55, 148, 255, 0.3),
+    inset 0 2px 4px rgba(255, 255, 255, 0.1);
+}
+
+.logo-icon svg {
+  width: 40px;
+  height: 40px;
+  color: #ffffff;
+  stroke-width: 1.5;
+}
+
+.logo-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--vscode-text-primary);
+  margin: 0 0 4px 0;
+  letter-spacing: 0.03em;
+  font-family: "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.logo-subtitle {
+  font-size: 11px;
+  color: var(--vscode-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-family: "SF Mono", monospace;
+}
+
+/* ----- 认证卡片 ----- */
+.activation-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--vscode-card-bg);
+  border-radius: var(--vscode-radius-md);
+  overflow: hidden;
+  border: 1px solid var(--vscode-card-border);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  animation: card-slide-up 0.5s ease-out 0.25s both;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.activation-card.success {
+  border-color: var(--vscode-success);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(137, 209, 133, 0.2);
+}
+
+.activation-card.error {
+  border-color: var(--vscode-danger);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(244, 135, 113, 0.2);
+}
+
+@keyframes card-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 卡片顶部装饰 */
+.activation-card-top {
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--vscode-blue) 20%,
+    var(--vscode-blue-light) 50%,
+    var(--vscode-blue) 80%,
+    transparent 100%);
+  position: relative;
+}
+
+.activation-card-top::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(55, 148, 255, 0.5), transparent);
+  animation: shimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 卡片内容 */
+.activation-card-content {
+  padding: 32px 28px 28px;
+}
+
+/* 头部区域 */
+.activation-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.activation-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  background: rgba(55, 148, 255, 0.12);
+  border-radius: var(--vscode-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(55, 148, 255, 0.25);
+}
+
+.activation-icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--vscode-blue);
+  stroke-width: 1.5;
+}
+
+.activation-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--vscode-text-primary);
+  margin: 0 0 6px 0;
+  font-family: "SF Pro Display", "PingFang SC", sans-serif;
+}
+
+.activation-subtitle {
+  font-size: 12px;
+  color: var(--vscode-text-tertiary);
+  margin: 0;
+  font-family: "SF Mono", monospace;
+  line-height: 1.5;
+}
+
+/* ----- 表单 ----- */
+.activation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* 输入框 */
+.input-wrapper {
+  position: relative;
+}
+
+.activation-input {
+  width: 100%;
+  padding: 14px 48px 14px 16px;
+  background: var(--vscode-bg);
+  border: 2px solid var(--vscode-border);
+  border-radius: var(--vscode-radius-md);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--vscode-text-primary);
+  font-family: "SF Mono", "Consolas", monospace;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+  outline: none;
+  text-transform: uppercase;
+}
+
+/* 清除按钮 */
+.clear-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--vscode-border);
+  background: var(--vscode-bg);
+  color: var(--vscode-text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  padding: 0;
+  outline: none;
+  z-index: 1;
+}
+
+.clear-btn:hover {
+  background: var(--vscode-card-hover);
+  border-color: var(--vscode-text-secondary);
+  color: var(--vscode-text-secondary);
+}
+
+.clear-btn:active {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--vscode-text-primary);
+}
+
+.clear-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+
+.activation-input::placeholder {
+  color: var(--vscode-text-tertiary);
+  letter-spacing: 0.02em;
+}
+
+.activation-input:hover:not(:disabled) {
+  border-color: var(--vscode-border-light);
+  background: var(--vscode-card-hover);
+}
+
+.activation-input:focus:not(:disabled) {
+  border-color: var(--vscode-blue);
+  box-shadow: 0 0 0 3px rgba(55, 148, 255, 0.12);
+}
+
+.activation-input.valid {
+  border-color: var(--vscode-success);
+  background: rgba(137, 209, 133, 0.05);
+}
+
+.activation-input.invalid {
+  border-color: var(--vscode-danger);
+  background: rgba(244, 135, 113, 0.05);
+}
+
+.activation-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 输入状态指示器 */
+.input-status {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--vscode-border);
+  border-top-color: var(--vscode-blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.input-status.success svg,
+.input-status.error svg {
+  width: 20px;
+  height: 20px;
+}
+
+.input-status.success svg {
+  color: var(--vscode-success);
+}
+
+.input-status.error svg {
+  color: var(--vscode-danger);
+}
+
+/* 格式提示 */
+.format-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  font-family: "SF Mono", monospace;
+  color: var(--vscode-text-tertiary);
+}
+
+.hint-segment {
+  color: var(--vscode-text-secondary);
+  font-weight: 600;
+}
+
+.hint-separator {
+  color: var(--vscode-border);
+}
+
+/* 错误信息 */
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--vscode-danger-bg);
+  border: 1px solid rgba(244, 135, 113, 0.25);
+  border-radius: var(--vscode-radius-sm);
+  font-size: 12px;
+  color: var(--vscode-danger);
+  font-weight: 500;
+  font-family: "SF Mono", monospace;
+  animation: error-shake 0.35s ease-out;
+}
+
+@keyframes error-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+
+.error-message svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* ----- 按钮 ----- */
+.activation-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--vscode-blue);
+  border: none;
+  border-radius: var(--vscode-radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  font-family: "SF Pro Display", "PingFang SC", sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(55, 148, 255, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.activation-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.activation-btn:hover:not(.disabled)::before {
+  opacity: 1;
+}
+
+.activation-btn:hover:not(.disabled) {
+  transform: translateY(-1px);
+  background: var(--vscode-blue-light);
+  box-shadow: 0 4px 12px rgba(55, 148, 255, 0.35);
+}
+
+.activation-btn:active:not(.disabled) {
+  transform: translateY(0);
+  background: var(--vscode-blue-dark);
+}
+
+.activation-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.activation-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+/* 按钮内加载动画 */
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ----- 成功操作 ----- */
+.success-actions {
+  margin-top: 4px;
+  animation: fade-in 0.35s ease-out 0.15s both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.enter-app-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--vscode-success);
+  border: none;
+  border-radius: var(--vscode-radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  color: #0a0a0b;
+  font-family: "SF Pro Display", "PingFang SC", sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(137, 209, 133, 0.3);
+}
+
+.enter-app-btn:hover {
+  transform: translateY(-1px);
+  background: #7ac776;
+  box-shadow: 0 4px 12px rgba(137, 209, 133, 0.4);
+}
+
+.enter-app-btn:active {
+  transform: translateY(0);
+  background: #6ab666;
+}
+
+.enter-app-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+/* ----- 底部信息 ----- */
+.activation-footer {
+  text-align: center;
+  animation: footer-fade-in 0.8s ease-out 0.4s both;
+}
+
+@keyframes footer-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.activation-footer p {
+  font-size: 11px;
+  color: var(--vscode-text-tertiary);
+  margin: 0 0 6px 0;
+  font-family: "SF Mono", monospace;
+}
+
+.footer-copyright {
+  font-size: 10px;
+  color: var(--vscode-text-tertiary);
+  opacity: 0.7;
+  margin: 0 !important;
+}
+
+/* ----- 响应式 ----- */
+@media (max-width: 480px) {
+  .activation-container {
+    gap: 24px;
+    padding: 16px;
+  }
+
+  .logo-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .logo-title {
+    font-size: 20px;
+  }
+
+  .logo-subtitle {
+    font-size: 10px;
+  }
+
+  .activation-card {
+    max-width: 100%;
+  }
+
+  .activation-card-content {
+    padding: 28px 24px 24px;
+  }
+
+  .activation-title {
+    font-size: 16px;
+  }
+
+  .activation-input {
+    font-size: 14px;
+    padding: 13px 40px 13px 14px;
+  }
+
+  .activation-btn,
+  .enter-app-btn {
+    padding: 13px 18px;
+    font-size: 13px;
+  }
+}

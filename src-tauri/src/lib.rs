@@ -5,6 +5,7 @@ use config::{load_config, ConfigState};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use util::{
+    activate_license,
     connect_websocket,
     detect_fusion_mode,
     detect_fusion_mode_async,
@@ -51,6 +52,7 @@ pub fn run() {
             validate_image,
             connect_websocket,
             get_ws_status,
+            activate_license,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
