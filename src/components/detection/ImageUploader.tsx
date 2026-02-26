@@ -1,3 +1,4 @@
+import { useRef, useEffect, useCallback } from "react";
 import type { ModalityType, ImageInfo } from "../../types";
 import type { BaseProps } from "../../types";
 import { getModalityFromFilename } from "../../utils/imageUtils";
@@ -26,81 +27,75 @@ export function ImageUploader({
   maxFiles = 50,
   className = "",
 }: ImageUploaderProps): React.ReactElement {
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 当 images 为空时重置文件输入框，确保可以重新选择相同文件
+  useEffect(() => {
+    if (images.length === 0 && fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, [images.length]);
+
+  // 处理文件列表，转换为 ImageInfo
+  const processFiles = useCallback((files: FileList | File[]): ImageInfo[] => {
+    const fileArray = Array.from(files);
+    const currentCount = images.length;
+    const availableSlots = maxFiles - currentCount;
 
     const newImages: ImageInfo[] = [];
+    let processed = 0;
 
-    Array.from(files).forEach((file, index) => {
-      if (images.length + newImages.length >= maxFiles) return;
-
+    fileArray.slice(0, availableSlots).forEach((file, index) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        // 根据文件名判断模态类型，fusion模式下使用文件名前缀
         const modality: ModalityType = mode === "fusion"
           ? getModalityFromFilename(file.name)
           : "rgb";
 
-        const imageInfo: ImageInfo = {
+        newImages.push({
           id: `${Date.now()}_${index}_${Math.random().toString(36).substring(2, 9)}`,
           file,
           preview: e.target?.result as string,
           modality,
-        };
+        });
 
-        newImages.push(imageInfo);
-
-        if (newImages.length === Math.min(files.length, maxFiles - images.length)) {
+        processed++;
+        // 所有文件处理完成后一次性添加
+        if (processed === Math.min(fileArray.length, availableSlots)) {
           onImagesAdd(newImages);
         }
       };
       reader.readAsDataURL(file);
     });
-  };
 
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    return newImages;
+  }, [images.length, maxFiles, mode, onImagesAdd]);
+
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    processFiles(files);
+  }, [processFiles]);
+
+  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     if (disabled) return;
 
-    const files = Array.from(event.dataTransfer.files).filter((file) =>
-      file.type.startsWith("image/")
+    const imageFiles = Array.from(event.dataTransfer.files).filter(
+      (file) => file.type.startsWith("image/")
     );
 
-    if (files.length === 0) return;
+    if (imageFiles.length === 0) return;
+    processFiles(imageFiles);
+  }, [disabled, processFiles]);
 
-    const newImages: ImageInfo[] = [];
-
-    files.forEach((file, index) => {
-      if (images.length + newImages.length >= maxFiles) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        // 根据文件名判断模态类型，fusion模式下使用文件名前缀
-        const modality: ModalityType = mode === "fusion"
-          ? getModalityFromFilename(file.name)
-          : "rgb";
-
-        const imageInfo: ImageInfo = {
-          id: `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
-          file,
-          preview: e.target?.result as string,
-          modality,
-        };
-
-        newImages.push(imageInfo);
-
-        if (newImages.length === Math.min(files.length, maxFiles - images.length)) {
-          onImagesAdd([...newImages]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-  };
+  }, []);
+
+  const handleRemoveClick = useCallback((id: string) => {
+    onImageRemove(id);
+  }, [onImageRemove]);
 
   return (
     <div className={`image-uploader ${className}`}>
@@ -110,6 +105,7 @@ export function ImageUploader({
         onDragOver={handleDragOver}
       >
         <input
+          ref={fileInputRef}
           type="file"
           accept="image/*"
           multiple
@@ -149,7 +145,7 @@ export function ImageUploader({
               <button
                 type="button"
                 className="remove-btn"
-                onClick={() => onImageRemove(image.id)}
+                onClick={() => handleRemoveClick(image.id)}
                 disabled={disabled}
               >
                 ×
