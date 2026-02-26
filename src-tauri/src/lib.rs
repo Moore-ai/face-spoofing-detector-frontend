@@ -7,9 +7,7 @@ use tokio::sync::Mutex;
 use util::{
     activate_license,
     connect_websocket,
-    detect_fusion_mode,
     detect_fusion_mode_async,
-    detect_single_mode,
     detect_single_mode_async,
     get_supported_formats,
     get_ws_status,
@@ -28,15 +26,12 @@ pub fn run() {
     let app_config = load_config().expect("加载配置文件失败");
 
     log::info!(
-        "配置加载成功: {:?}",
+        "配置加载成功：{:?}",
         app_config.image.supported_formats
     );
 
-    // 初始化WebSocket连接状态
-    let ws_state: WsConnectionStateRef = Arc::new(Mutex::new(util::WsConnectionState {
-        client_id: None,
-        is_connected: false,
-    }));
+    // 初始化 WebSocket 连接状态
+    let ws_state: WsConnectionStateRef = Arc::new(Mutex::new(util::WsConnectionState::new()));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -44,9 +39,7 @@ pub fn run() {
         .manage(ConfigState(Arc::new(app_config)))
         .manage(ws_state)
         .invoke_handler(tauri::generate_handler![
-            detect_single_mode,
             detect_single_mode_async,
-            detect_fusion_mode,
             detect_fusion_mode_async,
             get_supported_formats,
             validate_image,
