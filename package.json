@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "setup:env": "node scripts/setup-env.js"
+    "setup:env": "node scripts/setup-env.js",
+"clear:api-key": "node scripts/clear-api-key.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

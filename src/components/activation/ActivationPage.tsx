@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { activateLicense } from "../../api/tauri";
+import { useState, useCallback } from "react";
+import {
+  activateLicense,
+  type ActivateRequest
+} from "../../api/tauri";
 import { TitleBar } from "../layout/TitleBar";
 import "../../css/Activation.css";
 
@@ -18,26 +21,25 @@ export function ActivationPage({ onActivate }: ActivationPageProps): React.React
   const [error, setError] = useState<string | null>(null);
 
   // 格式化激活码：自动添加连字符
-  const formatActivationCode = (value: string): string => {
+  const formatActivationCode = useCallback((value: string): string => {
     const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    const limited = cleaned.slice(0, 18);
+    const limited = cleaned.slice(0, 19); // 激活码格式：ACT-XXXXXXXX-XXXXXXXX = 19 字符
 
     if (limited.length <= 3) return limited;
     if (limited.length <= 11) return `${limited.slice(0, 3)}-${limited.slice(3)}`;
     return `${limited.slice(0, 3)}-${limited.slice(3, 11)}-${limited.slice(11)}`;
-  };
+  }, []);
 
   // 处理输入变化
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const cleaned = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    const formatted = formatActivationCode(cleaned);
-    setActivationCode(formatted);
+    setActivationCode(formatActivationCode(cleaned));
     setError(null);
     setIsValid(null);
-  };
+  }, [formatActivationCode]);
 
   // 处理粘贴
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
     const cleaned = e.clipboardData.getData("text").toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (cleaned.length > 0) {
       e.preventDefault();
@@ -45,25 +47,21 @@ export function ActivationPage({ onActivate }: ActivationPageProps): React.React
       setError(null);
       setIsValid(null);
     }
-  };
-
-  // 验证激活码格式：只需以 ACT- 开头且长度大于 4
-  const isValidFormat = (code: string): boolean => {
-    return code.startsWith("ACT-") && code.length > 4;
-  };
+  }, [formatActivationCode]);
 
   // 清除输入
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     setActivationCode("");
     setError(null);
     setIsValid(null);
-  };
+  }, []);
 
   // 提交验证
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isValidFormat(activationCode)) {
+    // 验证激活码格式：只需以 ACT- 开头且长度大于 4
+    if (!activationCode.startsWith("ACT-") || activationCode.length <= 4) {
       setError("激活码格式不正确");
       setIsValid(false);
       return;
@@ -73,12 +71,17 @@ export function ActivationPage({ onActivate }: ActivationPageProps): React.React
     setError(null);
 
     try {
-      const response = await activateLicense({ activationCode });
+      const request: ActivateRequest = {
+        activationCode: activationCode,
+      };
+      const response = await activateLicense(request);
       setIsValidating(false);
 
-      if (response.success) {
+      if (response.success && response.apiKey) {
         setIsValid(true);
-        // 验证成功后等待 2.5 秒再进入主页面
+        // 存储 API Key 到 localStorage
+        localStorage.setItem("api_key", response.apiKey);
+        // 等待 2.5 秒后进入主页面
         setTimeout(() => onActivate?.(), 2500);
       } else {
         setIsValid(false);
@@ -87,9 +90,9 @@ export function ActivationPage({ onActivate }: ActivationPageProps): React.React
     } catch (err) {
       setIsValidating(false);
       setIsValid(false);
-      setError(err instanceof Error ? err.message : "验证失败，请重试");
+      setError(err instanceof Error ? err.message : String(err));
     }
-  };
+  }, [activationCode, onActivate]);
 
   return (
     <div className="activation-page">

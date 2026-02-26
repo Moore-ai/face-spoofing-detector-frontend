@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TitleBar } from "./components/layout/TitleBar";
 import { ActivityBar, type NavItemId } from "./components/layout/ActivityBar";
 import { ModeSelector } from "./components/detection/ModeSelector";
@@ -9,8 +9,15 @@ import { useDetection } from "./hooks/useDetection";
 import "./css/App.css";
 
 function App(): React.ReactElement {
-  // 每次启动都需要重新激活
-  const [isActivated, setIsActivated] = useState(false);
+  // 启动时检查 localStorage 中是否存在 API Key
+  const [isActivated, setIsActivated] = useState(() => {
+    // 只在客户端运行时检查 localStorage
+    if (typeof window !== "undefined") {
+      const apiKey = localStorage.getItem("api_key");
+      return !!apiKey;
+    }
+    return false;
+  });
   const [activeTab, setActiveTab] = useState<NavItemId | null>("work");
 
   const {
@@ -32,6 +39,18 @@ function App(): React.ReactElement {
 
   // 检测进行中时禁用用户交互（防止重复提交）
   const isInteractionDisabled = isDetecting || userState.taskId !== null;
+
+  // 调试日志
+  useEffect(() => {
+    console.log("[App] 状态变化:", {
+      status,
+      isDetecting,
+      taskId: userState.taskId,
+      isInteractionDisabled,
+      hasImages,
+      hasResults,
+    });
+  }, [status, isDetecting, userState.taskId, isInteractionDisabled, hasImages, hasResults]);
 
   // 如果未激活，显示激活页面
   if (!isActivated) {

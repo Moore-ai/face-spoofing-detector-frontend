@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "../../css/TitleBar.css";
 
@@ -8,45 +8,45 @@ import "../../css/TitleBar.css";
  */
 export function TitleBar(): React.ReactElement {
   const [isMaximized, setIsMaximized] = useState(false);
-  const currentWindow = getCurrentWindow();
+
+  // 使用 useCallback 创建稳定的窗口控制函数
+  const handleMinimize = useCallback(async () => {
+    try {
+      await getCurrentWindow().minimize();
+    } catch (error) {
+      console.error("最小化失败:", error);
+    }
+  }, []);
+
+  const handleMaximize = useCallback(async () => {
+    try {
+      await getCurrentWindow().toggleMaximize();
+      setIsMaximized((prev) => !prev);
+    } catch (error) {
+      console.error("最大化切换失败:", error);
+    }
+  }, []);
+
+  const handleClose = useCallback(async () => {
+    try {
+      await getCurrentWindow().close();
+    } catch (error) {
+      console.error("关闭失败:", error);
+    }
+  }, []);
 
   // 检查窗口最大化状态
   useEffect(() => {
     const checkMaximized = async () => {
       try {
-        const maximized = await currentWindow.isMaximized();
+        const maximized = await getCurrentWindow().isMaximized();
         setIsMaximized(maximized);
       } catch {
         // 忽略错误
       }
     };
     checkMaximized();
-  }, [currentWindow]);
-
-  const handleMinimize = async () => {
-    try {
-      await currentWindow.minimize();
-    } catch (error) {
-      console.error("最小化失败:", error);
-    }
-  };
-
-  const handleMaximize = async () => {
-    try {
-      await currentWindow.toggleMaximize();
-      setIsMaximized((prev) => !prev);
-    } catch (error) {
-      console.error("最大化切换失败:", error);
-    }
-  };
-
-  const handleClose = async () => {
-    try {
-      await currentWindow.close();
-    } catch (error) {
-      console.error("关闭失败:", error);
-    }
-  };
+  }, []);
 
   return (
     <div className="title-bar">
