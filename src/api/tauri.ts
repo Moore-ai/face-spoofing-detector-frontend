@@ -9,38 +9,20 @@ import type { Event } from "@tauri-apps/api/event";
 import type {
   SingleModeRequest,
   FusionModeRequest,
-  BatchDetectionResult,
-  DetectionResultItem,
 } from "../types";
 
 const isTauri = () => {
-  return typeof window !== "undefined" && "__TAURI__" in window;
+  return window.__TAURI__ !== undefined;
 };
 
 // ===== Rust 返回类型 =====
-
-export interface RustDetectionResultItem {
-  id: string;
-  result: "real" | "fake";
-  confidence: number;
-  timestamp: string;
-  processing_time: number;
-}
-
-export interface RustBatchDetectionResult {
-  results: RustDetectionResultItem[];
-  total_count: number;
-  real_count: number;
-  fake_count: number;
-  average_confidence: number;
-}
 
 export interface RustTaskDetectionResultItem {
   mode: string;
   result: string;
   confidence: number;
   probabilities: number[];
-  processing_time: number;
+  processingTime: number;
 }
 
 export interface RustAsyncTaskResponse {
@@ -51,43 +33,25 @@ export interface RustAsyncTaskResponse {
 // ===== WebSocket 事件类型 =====
 
 export interface WsEventMessage {
-  event_type: string;
-  task_id: string;
+  eventType: string;
+  taskId: string;
   status: string | null;
   message: string | null;
   result: RustTaskDetectionResultItem | null;
-  total_items: number | null;
-  processed_items: number | null;
-  completed_results: RustTaskDetectionResultItem[] | null;
+  totalItems: number | null;
+  processedItems: number | null;
+  completedResults: RustTaskDetectionResultItem[] | null;
 }
 
 export interface WsConnectionState {
-  client_id: string | null;
-  is_connected: boolean;
-}
-
-// ===== 类型转换 =====
-
-function convertResult(rustResult: RustBatchDetectionResult): BatchDetectionResult {
-  return {
-    results: rustResult.results.map((item: RustDetectionResultItem): DetectionResultItem => ({
-      id: item.id,
-      result: item.result,
-      confidence: item.confidence,
-      timestamp: item.timestamp,
-      processingTime: item.processing_time,
-    })),
-    totalCount: rustResult.total_count,
-    realCount: rustResult.real_count,
-    fakeCount: rustResult.fake_count,
-    averageConfidence: rustResult.average_confidence,
-  };
+  clientId: string | null;
+  isConnected: boolean;
 }
 
 // ===== 导出类型 =====
 
 export interface AsyncTaskResponse {
-  taskId: string;
+  task_id: string;
   message: string;
 }
 
@@ -100,30 +64,6 @@ export interface TaskDetectionResultItem {
 }
 
 // ===== API 函数 =====
-
-export async function detectSingleMode(
-  request: SingleModeRequest
-): Promise<BatchDetectionResult> {
-  if (!isTauri()) {
-    throw new Error("请使用 Tauri 模式运行: npm run tauri dev");
-  }
-  const result = await invoke<RustBatchDetectionResult>("detect_single_mode", {
-    request,
-  });
-  return convertResult(result);
-}
-
-export async function detectFusionMode(
-  request: FusionModeRequest
-): Promise<BatchDetectionResult> {
-  if (!isTauri()) {
-    throw new Error("请使用 Tauri 模式运行: npm run tauri dev");
-  }
-  const result = await invoke<RustBatchDetectionResult>("detect_fusion_mode", {
-    request,
-  });
-  return convertResult(result);
-}
 
 export async function getSupportedFormats(): Promise<string[]> {
   if (!isTauri()) {
@@ -139,53 +79,49 @@ export async function validateImage(imagePath: string): Promise<boolean> {
   return await invoke<boolean>("validate_image", { imagePath });
 }
 
-export async function connectWebsocket(): Promise<string> {
+export async function connectWebsocket(apiKey: string): Promise<string> {
   if (!isTauri()) {
     throw new Error("请使用 Tauri 模式运行: npm run tauri dev");
   }
-  return await invoke<string>("connect_websocket");
+  return await invoke<string>("connect_websocket", { apiKey });
 }
 
 export async function getWsStatus(): Promise<WsConnectionState> {
   if (!isTauri()) {
-    return { client_id: null, is_connected: false };
+    return { clientId: null, isConnected: false };
   }
   const result = await invoke<[string | null, boolean]>("get_ws_status");
-  return { client_id: result[0], is_connected: result[1] };
+  return { clientId: result[0], isConnected: result[1] };
 }
 
 export async function detectSingleModeAsync(
   request: SingleModeRequest,
-  clientId: string
+  clientId: string,
+  apiKey: string
 ): Promise<AsyncTaskResponse> {
   if (!isTauri()) {
     throw new Error("请使用 Tauri 模式运行: npm run tauri dev");
   }
-  const result = await invoke<RustAsyncTaskResponse>("detect_single_mode_async", {
+  return await invoke<AsyncTaskResponse>("detect_single_mode_async", {
     request,
     clientId,
+    apiKey,
   });
-  return {
-    taskId: result.task_id,
-    message: result.message,
-  };
 }
 
 export async function detectFusionModeAsync(
   request: FusionModeRequest,
-  clientId: string
+  clientId: string,
+  apiKey: string
 ): Promise<AsyncTaskResponse> {
   if (!isTauri()) {
     throw new Error("请使用 Tauri 模式运行: npm run tauri dev");
   }
-  const result = await invoke<RustAsyncTaskResponse>("detect_fusion_mode_async", {
+  return await invoke<AsyncTaskResponse>("detect_fusion_mode_async", {
     request,
     clientId,
+    apiKey,
   });
-  return {
-    taskId: result.task_id,
-    message: result.message,
-  };
 }
 
 // ===== WebSocket 事件监听 =====
@@ -193,21 +129,33 @@ export async function detectFusionModeAsync(
 export type ProgressCallback = (event: WsEventMessage) => void;
 
 export async function listenWsProgress(callback: ProgressCallback): Promise<UnlistenFn> {
-  return await listen<WsEventMessage>("ws_progress", (event: Event<WsEventMessage>) => {
+  console.log("[Tauri API] 注册 ws_progress 事件监听器");
+  const unlisten = await listen<WsEventMessage>("ws_progress", (event: Event<WsEventMessage>) => {
+    console.log("[Tauri API] 收到 ws_progress 事件:", event.payload);
     callback(event.payload);
   });
+  console.log("[Tauri API] ws_progress 监听器注册成功");
+  return unlisten;
 }
 
 export async function listenWsTaskCompleted(callback: ProgressCallback): Promise<UnlistenFn> {
-  return await listen<WsEventMessage>("ws_task_completed", (event: Event<WsEventMessage>) => {
+  console.log("[Tauri API] 注册 ws_task_completed 事件监听器");
+  const unlisten = await listen<WsEventMessage>("ws_task_completed", (event: Event<WsEventMessage>) => {
+    console.log("[Tauri API] 收到 ws_task_completed 事件:", event.payload);
     callback(event.payload);
   });
+  console.log("[Tauri API] ws_task_completed 监听器注册成功");
+  return unlisten;
 }
 
 export async function listenWsTaskFailed(callback: ProgressCallback): Promise<UnlistenFn> {
-  return await listen<WsEventMessage>("ws_task_failed", (event: Event<WsEventMessage>) => {
+  console.log("[Tauri API] 注册 ws_task_failed 事件监听器");
+  const unlisten = await listen<WsEventMessage>("ws_task_failed", (event: Event<WsEventMessage>) => {
+    console.log("[Tauri API] 收到 ws_task_failed 事件:", event.payload);
     callback(event.payload);
   });
+  console.log("[Tauri API] ws_task_failed 监听器注册成功");
+  return unlisten;
 }
 
 export async function listenWsConnected(callback: (clientId: string) => void): Promise<UnlistenFn> {
@@ -231,6 +179,7 @@ export interface ActivateRequest {
 export interface ActivateResponse {
   success: boolean;
   message: string;
+  apiKey?: string;
   expiresAt?: string;
 }
 
@@ -241,6 +190,7 @@ export async function activateLicense(request: ActivateRequest): Promise<Activat
     return {
       success: true,
       message: "激活成功",
+      apiKey: "sk_dev_mock_api_key_" + Date.now(),
     };
   }
   return await invoke<ActivateResponse>("activate_license", {
