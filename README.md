@@ -19,6 +19,7 @@
 - 🔄 **三栏布局**：活动栏、侧边栏和主内容区紧密排列，支持独立滚动
 - ⚙️ **灵活配置**：通过环境变量和 YAML 配置文件自定义参数
 - 🔒 **文件验证**：自动检测文件格式和有效性
+- 🔑 **激活码认证**：支持激活码换取 API Key 进行认证
 
 ## 🛠️ 技术栈
 
@@ -231,13 +232,30 @@ cd src-tauri && cargo fmt
 
 | 端点 | 方法 | 描述 |
 |------|------|------|
+| `POST /auth/activate` | 激活码验证 | 换取 API Key |
 | `POST /infer/single` | 单模态检测 | 接收 base64 图片列表 |
 | `POST /infer/fusion` | 融合模式检测 | 接收 RGB/IR 图片对 |
+| `WS /infer/ws` | WebSocket 连接 | 接收任务进度和完成通知 |
 
 **环境变量配置：**
 ```env
 API_BASE_URL=http://localhost:8000
 ```
+
+## 📝 注意事项
+
+### 激活码使用
+
+- 激活码格式：`ACT-XXXXXXXX-XXXXXXXX`（19 字符）
+- 激活码为单次使用，使用后需要重新生成
+- 激活成功后 API Key 存储在 localStorage 中
+
+### 竞态条件处理
+
+由于后端处理速度可能很快，前端已实现竞态条件处理：
+- 任务完成事件可能在 `detect_xxx_async` 返回之前到达
+- 使用 `isTaskCompletedRef` 标记任务完成状态
+- 避免 `taskId` 被错误覆盖
 
 ## 🤝 贡献指南
 
