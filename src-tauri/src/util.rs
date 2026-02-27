@@ -31,12 +31,15 @@ pub struct FusionModeRequest {
 
 /// 检测结果项（来自 Python 后端）
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DetectionResultItem {
     pub mode: String,
     pub result: String,
     pub confidence: f64,
     pub probabilities: Vec<f64>,
     pub processing_time: u64,
+    pub error: Option<String>,  // 错误信息（当 result 为"error"时）
+    pub image_index: Option<u32>,  // 图片在批次中的索引
 }
 
 /// 异步任务响应
@@ -242,8 +245,8 @@ fn handle_ws_message(app: &AppHandle, text: &str) -> Result<(), String> {
     log::info!("收到 WebSocket 消息类型：{}, 完整消息：{}", msg_type, text);
 
     match msg_type {
-        "task_completed" => {
-            log::info!("收到 task_completed 消息");
+        "task_completed" | "task_partial_failure" => {
+            log::info!("收到 {} 消息", msg_type);
             let data = value.get("data").ok_or("缺少 data 字段")?;
             let task_id = data.get("task_id").and_then(|v| v.as_str()).unwrap_or("");
             log::info!("任务 ID: {}", task_id);
@@ -293,8 +296,10 @@ fn handle_ws_message(app: &AppHandle, text: &str) -> Result<(), String> {
                     .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default(),
                 processing_time: r.get("processing_time").and_then(|v| v.as_u64()).unwrap_or(0),
+                error: r.get("error").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                image_index: r.get("image_index").and_then(|v| v.as_u64()).map(|v| v as u32),
             });
-            log::info!("解析结果：{:?}", result.as_ref().map(|r| &r.result));
+            log::info!("解析结果：{:?}", result.as_ref().map(|r| (&r.result, &r.error, &r.image_index)));
 
             let total = data.get("total_items").and_then(|v| v.as_u64()).map(|v| v as u32);
             let current = data.get("completed_items").and_then(|v| v.as_u64()).map(|v| v as u32);
