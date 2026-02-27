@@ -14,6 +14,8 @@
 - 📁 **批量处理**：可一次性上传多张图片进行检测（最多 50 张）
 - 🖼️ **实时预览**：上传图片即时预览，支持拖拽上传
 - 📊 **结果可视化**：置信度条形图、统计面板、详细结果卡片
+- 🔄 **实时结果显示**：检测结果随处理进度实时显示，无需等待任务完成
+- ⚠️ **错误处理**：推理失败时显示错误卡片，带警告图标和详细错误信息
 - 🎨 **VS Code 风格**：深色主题界面，左侧活动栏导航，现代化布局
 - 🖥️ **自定义窗口**：完整的自定义标题栏，包含最小化、最大化和关闭按钮
 - 🔄 **三栏布局**：活动栏、侧边栏和主内容区紧密排列，支持独立滚动
@@ -47,18 +49,8 @@
 │   │   └── commands.d.ts
 │   ├── components/               # React 组件
 │   │   ├── layout/               # 布局组件
-│   │   │   ├── ActivityBar.tsx   # 活动栏
-│   │   │   ├── Header.tsx        # 应用头部
-│   │   │   └── TitleBar.tsx      # 自定义标题栏
 │   │   ├── ui/                   # 通用 UI 组件
-│   │   │   └── ConfidenceBar.tsx # 置信度条
-│   │   ├── detection/            # 检测相关组件
-│   │   │   ├── ModeSelector.tsx       # 模式选择器
-│   │   │   ├── ImageUploader.tsx      # 图片上传
-│   │   │   ├── ResultPanel.tsx        # 结果面板
-│   │   │   ├── ResultPanelStates.tsx  # 面板状态组件
-│   │   │   └── DetectionCard.tsx      # 结果卡片
-│   │   └── index.ts            # 组件统一导出
+│   │   └── detection/            # 检测相关组件
 │   ├── hooks/                    # 自定义 Hooks
 │   │   └── useDetection.ts
 │   ├── types/                    # 类型定义
@@ -67,20 +59,14 @@
 │   │   ├── imageUtils.ts
 │   │   └── stats.ts
 │   ├── App.tsx
-│   ├── App.css
 │   └── main.tsx
+├── docs/                         # 项目文档
+│   └── client-server-communication.md  # 客户端 - 服务器通信详解
 ├── src-tauri/                    # Rust 后端代码
 │   ├── src/
-│   │   ├── main.rs
-│   │   ├── lib.rs
-│   │   ├── util.rs
-│   │   └── config.rs
-│   ├── capabilities/             # 权限配置
-│   │   └── default.json          # 窗口控制权限配置
+│   ├── capabilities/
 │   ├── config/
-│   │   └── config.yaml
-│   ├── tauri.conf.json           # Tauri 应用配置（包含装饰设置）
-│   └── Cargo.toml
+│   └── tauri.conf.json
 └── package.json
 ```
 
@@ -236,10 +222,34 @@ cd src-tauri && cargo fmt
 | `POST /infer/single` | 单模态检测 | 接收 base64 图片列表 |
 | `POST /infer/fusion` | 融合模式检测 | 接收 RGB/IR 图片对 |
 | `WS /infer/ws` | WebSocket 连接 | 接收任务进度和完成通知 |
+| `GET /infer/task/{task_id}` | 任务状态查询 | 查询任务状态和结果 |
+
+**详细通信协议**: 参见 [`docs/client-server-communication.md`](docs/client-server-communication.md)
 
 **环境变量配置：**
 ```env
 API_BASE_URL=http://localhost:8000
+```
+
+**WebSocket 消息类型：**
+| 消息类型 | 说明 |
+|---------|------|
+| `progress_update` | 处理进度更新，包含当前结果 |
+| `task_completed` | 任务全部完成（所有图片成功） |
+| `task_partial_failure` | 任务部分失败（部分图片失败） |
+| `task_failed` | 任务完全失败 |
+
+**错误响应格式：**
+```json
+{
+  "mode": "single",
+  "result": "error",
+  "confidence": 0.0,
+  "probabilities": [0.0, 0.0],
+  "processing_time": 0,
+  "error": "具体的错误信息",
+  "image_index": 0
+}
 ```
 
 ## 📝 注意事项
@@ -256,6 +266,21 @@ API_BASE_URL=http://localhost:8000
 - 任务完成事件可能在 `detect_xxx_async` 返回之前到达
 - 使用 `isTaskCompletedRef` 标记任务完成状态
 - 避免 `taskId` 被错误覆盖
+
+### 错误处理
+
+系统支持完善的错误处理和显示：
+- **错误检测**：当推理失败时，后端返回 `result: "error"` 和 `error` 字段
+- **UI 显示**：错误结果以黄色警告样式显示，包含错误图标和消息
+- **统计信息**：统计面板单独显示错误数量和百分比
+- **部分失败**：当部分图片失败时，后端发送 `task_partial_failure` 消息，正常结果仍会显示
+
+### 实时结果显示
+
+前端采用实时结果显示策略：
+- 检测结果在收到 `ws_progress` 事件时立即添加并显示
+- 无需等待任务完成，用户可以在检测进行中查看已完成的结果
+- 结果面板顶部显示进度条，指示当前处理进度
 
 ## 🤝 贡献指南
 
