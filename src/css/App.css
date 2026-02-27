@@ -569,6 +569,40 @@ body {
   font-family: "SF Mono", monospace;
 }
 
+/* 结果面板进度条 */
+.result-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--vscode-spacing-md);
+  padding: var(--vscode-spacing-sm) var(--vscode-spacing-md);
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--vscode-border);
+}
+
+.progress-track {
+  flex: 1;
+  height: 4px;
+  background: var(--vscode-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--vscode-blue), var(--vscode-blue-light));
+  transition: width var(--vscode-transition-normal) ease-out;
+  border-radius: 2px;
+}
+
+.progress-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vscode-text-secondary);
+  font-family: "SF Mono", monospace;
+  min-width: 60px;
+  text-align: right;
+}
+
 /* Empty State */
 .empty-state {
   display: flex;
@@ -649,6 +683,13 @@ body {
   color: var(--vscode-warning);
 }
 
+.stat-card.error .stat-value {
+  color: var(--vscode-warning);
+  background: var(--vscode-warning-bg);
+  padding: var(--vscode-spacing-sm) var(--vscode-spacing-md);
+  border-radius: var(--vscode-radius-md);
+}
+
 .result-divider {
   height: 1px;
   background: var(--vscode-border);
@@ -689,6 +730,11 @@ body {
   border-left: 3px solid var(--vscode-danger);
 }
 
+.detection-card.error {
+  border-left: 3px solid var(--vscode-warning);
+  background: linear-gradient(135deg, var(--vscode-card-bg) 0%, rgba(60, 53, 31, 0.3) 100%);
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -723,6 +769,11 @@ body {
 .result-badge.fake {
   background: var(--vscode-danger-bg);
   color: var(--vscode-danger);
+}
+
+.result-badge.error {
+  background: var(--vscode-warning-bg);
+  color: var(--vscode-warning);
 }
 
 .card-image {
@@ -832,6 +883,41 @@ body {
   color: var(--vscode-text-secondary);
   font-weight: 600;
   font-family: "SF Mono", monospace;
+}
+
+/* ===== 错误状态卡片内容 ===== */
+.card-error-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vscode-spacing-xl);
+  gap: var(--vscode-spacing-md);
+}
+
+.error-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--vscode-warning-bg);
+  color: var(--vscode-warning);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: "SF Mono", monospace;
+  border: 2px solid var(--vscode-warning);
+  box-shadow: 0 0 20px rgba(204, 167, 0, 0.2);
+}
+
+.error-message {
+  font-size: 12px;
+  color: var(--vscode-text-secondary);
+  text-align: center;
+  line-height: 1.6;
+  font-family: "SF Mono", monospace;
+  max-width: 200px;
 }
 
 /* ===== Footer ===== */

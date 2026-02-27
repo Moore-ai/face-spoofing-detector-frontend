@@ -5,7 +5,7 @@ import { LoadingState, EmptyState, ResultsView } from "./ResultPanelStates";
 
 interface ResultPanelProps extends BaseProps {
   images: ImageInfo[];
-  isLoading?: boolean;
+  status: string;
   userState?: UserState;
 }
 
@@ -15,28 +15,31 @@ interface ResultPanelProps extends BaseProps {
  */
 export function ResultPanel({
   images,
-  isLoading = false,
+  status,
   userState,
   className = "",
 }: ResultPanelProps): React.ReactElement {
   const completedResults = userState?.completedResults || [];
 
-  if (isLoading) {
-    return <LoadingState progress={userState?.progress} className={className} />;
+  // 有结果时优先显示结果（即使还在加载中）
+  if (completedResults.length > 0) {
+    const stats = calculateDetectionStats(completedResults);
+    return (
+      <ResultsView
+        images={images}
+        completedResults={completedResults}
+        stats={stats}
+        className={className}
+      />
+    );
   }
 
-  if (completedResults.length === 0) {
-    return <EmptyState className={className} />;
+  // 没有结果时显示加载状态
+  if (status === "connecting") {
+    return <LoadingState reminder="正在连接..." className={className} />;
+  } else if (status === "detecting") {
+    return <LoadingState reminder="连接成功，开始推理..." className={className} />;
   }
 
-  const stats = calculateDetectionStats(completedResults);
-
-  return (
-    <ResultsView
-      images={images}
-      completedResults={completedResults}
-      stats={stats}
-      className={className}
-    />
-  );
+  return <EmptyState className={className} />;
 }

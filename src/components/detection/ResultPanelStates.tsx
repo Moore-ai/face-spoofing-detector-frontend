@@ -4,18 +4,18 @@ import { DetectionCard } from "./DetectionCard";
 import { type DetectionStats } from "../../utils/stats";
 
 interface LoadingStateProps extends BaseProps {
-  progress?: number;
+  reminder: string;
 }
 
 /**
  * 加载状态组件
  */
-export function LoadingState({ progress, className = "" }: LoadingStateProps): React.ReactElement {
+export function LoadingState({ reminder, className = "" }: LoadingStateProps): React.ReactElement {
   return (
     <div className={`result-panel ${className} loading`}>
       <div className="loading-spinner">
         <div className="spinner" />
-        <span>{progress ? `检测中 ${progress}%` : "正在连接..."}</span>
+        <span>{reminder}</span>
       </div>
     </div>
   );
@@ -72,6 +72,12 @@ export function ResultsView({
           <span className="stat-value">{stats.fakeCount}</span>
           <span className="stat-label">伪人脸 ({stats.fakePercentage}%)</span>
         </div>
+        {stats.errorCount > 0 && (
+          <div className="stat-card error">
+            <span className="stat-value">{stats.errorCount}</span>
+            <span className="stat-label">错误 ({stats.errorPercentage}%)</span>
+          </div>
+        )}
         <div className="stat-card confidence">
           <span className="stat-value">{Math.round(stats.averageConfidence * 100)}%</span>
           <span className="stat-label">平均置信度</span>
@@ -81,14 +87,18 @@ export function ResultsView({
       <div className="result-divider" />
 
       <div className="result-grid">
-        {completedResults.map((result, index) => (
-          <DetectionCard
-            key={result.id}
-            result={result}
-            imagePreview={images[index]?.preview}
-            index={index}
-          />
-        ))}
+        {completedResults.map((result, index) => {
+          // 根据结果的 image_index 字段获取对应的图片预览
+          const imageIndex = result.imageIndex ?? index;
+          return (
+            <DetectionCard
+              key={result.id}
+              result={result}
+              imagePreview={images[imageIndex]?.preview}
+              index={index}
+            />
+          );
+        })}
       </div>
     </div>
   );
