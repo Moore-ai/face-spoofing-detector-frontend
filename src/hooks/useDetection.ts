@@ -190,10 +190,12 @@ export function useDetection(): UseDetectionReturn {
       if (wsMsg.result) {
         const result: DetectionResultItem = {
           id: `${wsMsg.taskId}_${wsMsg.processedItems || 0}`,
-          result: wsMsg.result.result as "real" | "fake",
+          result: wsMsg.result.result as "real" | "fake" | "error",
           confidence: wsMsg.result.confidence,
           timestamp: new Date().toISOString(),
           processingTime: wsMsg.result.processingTime,
+          errorMessage: wsMsg.result.result === "error" ? (wsMsg.result.error || wsMsg.message || "推理失败") : undefined,
+          imageIndex: wsMsg.result.imageIndex,
         };
         setUserState((prev) => ({
           ...prev,

@@ -122,7 +122,7 @@ function App(): React.ReactElement {
         <main className="main-content">
           <ResultPanel
             images={images}
-            isLoading={isDetecting}
+            status={status}
             userState={userState}
           />
         </main>
