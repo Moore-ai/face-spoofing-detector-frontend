@@ -6,10 +6,12 @@ import type { DetectionResultItem } from "../types";
 export interface DetectionStats {
   realCount: number;
   fakeCount: number;
+  errorCount: number;  // 错误计数
   totalCount: number;
   averageConfidence: number;
   realPercentage: number;
   fakePercentage: number;
+  errorPercentage: number;  // 错误百分比
 }
 
 /**
@@ -20,21 +22,25 @@ export function calculateDetectionStats(
   completedResults: DetectionResultItem[]
 ): DetectionStats {
   const realCount = completedResults.filter((r) => r.result === "real").length;
+  const errorCount = completedResults.filter((r) => r.result === "error").length;
   const totalCount = completedResults.length;
-  const fakeCount = totalCount - realCount;
+  const fakeCount = totalCount - realCount - errorCount;  // 排除错误项
   const averageConfidence =
     totalCount > 0
       ? completedResults.reduce((sum, r) => sum + r.confidence, 0) / totalCount
       : 0;
   const realPercentage = totalCount > 0 ? Math.round((realCount / totalCount) * 100) : 0;
-  const fakePercentage = 100 - realPercentage;
+  const fakePercentage = totalCount > 0 ? Math.round((fakeCount / totalCount) * 100) : 0;
+  const errorPercentage = totalCount > 0 ? Math.round((errorCount / totalCount) * 100) : 0;
 
   return {
     realCount,
     fakeCount,
+    errorCount,
     totalCount,
     averageConfidence,
     realPercentage,
     fakePercentage,
+    errorPercentage,
   };
 }
