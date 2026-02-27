@@ -10,7 +10,7 @@ export type DetectionMode = "single" | "fusion";
 export type ModalityType = "rgb" | "ir";
 
 // 检测结果类型
-export type LivenessResult = "real" | "fake";
+export type LivenessResult = "real" | "fake" | "error";
 
 // 检测状态
 export type DetectionStatus = "idle" | "connecting" | "detecting" | "success" | "error";
@@ -46,6 +46,8 @@ export interface DetectionResultItem {
   confidence: number;
   timestamp: string;
   processingTime: number;
+  errorMessage?: string;
+  imageIndex?: number;  // 图片在批次中的索引（从后端返回）
 }
 
 // 批量检测结果

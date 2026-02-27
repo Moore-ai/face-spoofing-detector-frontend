@@ -23,6 +23,8 @@ export interface RustTaskDetectionResultItem {
   confidence: number;
   probabilities: number[];
   processingTime: number;
+  error?: string;  // 错误信息（当 result 为"error"时）
+  imageIndex?: number;  // 图片在批次中的索引
 }
 
 export interface RustAsyncTaskResponse {
@@ -61,6 +63,8 @@ export interface TaskDetectionResultItem {
   confidence: number;
   probabilities: number[];
   processingTime: number;
+  error?: string;  // 错误信息（当 result 为"error"时）
+  imageIndex?: number;  // 图片在批次中的索引
 }
 
 // ===== API 函数 =====

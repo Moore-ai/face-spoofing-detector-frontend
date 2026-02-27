@@ -2,7 +2,7 @@ import type { BaseProps } from "../../types";
 
 interface ConfidenceBarProps extends BaseProps {
   confidence: number;
-  result: "real" | "fake";
+  result: "real" | "fake" | "error";
 }
 
 /**
