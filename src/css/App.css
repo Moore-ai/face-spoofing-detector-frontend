@@ -63,25 +63,26 @@
   box-sizing: border-box;
 }
 
-body {
+html,
+body,
+#root {
+  height: 100%;
   font-family: "SF Mono", "Monaco", "Menlo", "Ubuntu Mono", "Consolas", monospace;
   background: transparent;
   color: var(--vscode-text-primary);
-  min-height: 100vh;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
 .app {
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--vscode-bg);
   overflow: hidden;
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  overflow: hidden;
 }
 
 /* ===== VS Code 布局 ===== */
@@ -531,7 +532,8 @@ body {
   display: flex;
   flex-direction: column;
   padding: var(--vscode-spacing-xl);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--vscode-panel-bg);
 }
 
@@ -702,7 +704,6 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--vscode-spacing-lg);
-  overflow-y: auto;
   padding-bottom: var(--vscode-spacing-xl);
 }
 
