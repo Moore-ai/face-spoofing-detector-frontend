@@ -567,3 +567,495 @@ pub async fn activate_license(
         expires_at: backend_response.expires_at,
     })
 }
+
+// ===== 历史记录 API =====
+
+/// 历史查询参数
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryQueryParams {
+    pub client_id: Option<String>,
+    pub mode: Option<String>,
+    pub status: Option<String>,
+    pub days: Option<String>,
+    pub page: Option<String>,
+    pub page_size: Option<String>,
+}
+
+/// 历史统计参数
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryStatsParams {
+    pub client_id: Option<String>,
+    pub days: Option<String>,
+}
+
+/// 历史删除参数
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryDeleteParams {
+    pub task_ids: Option<Vec<String>>,
+    pub days_ago: Option<u32>,
+}
+
+/// 历史结果项（从后端返回）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackendHistoryResultItem {
+    pub mode: String,
+    pub modality: Option<String>,
+    pub result: String,
+    pub confidence: f64,
+    pub probabilities: Vec<f64>,
+    pub processing_time: u64,
+    pub image_index: Option<u32>,
+    pub error: Option<String>,
+    pub retry_count: u32,
+}
+
+/// 历史任务项（从后端返回）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackendHistoryTaskItem {
+    pub task_id: String,
+    #[serde(default)]
+    pub client_id: Option<String>,
+    #[serde(default)]
+    pub api_key_hash: Option<String>,
+    pub mode: String,
+    pub status: String,
+    #[serde(default)]
+    pub total_items: u32,
+    #[serde(default)]
+    pub successful_items: u32,
+    #[serde(default)]
+    pub failed_items: u32,
+    #[serde(default)]
+    pub real_count: u32,
+    #[serde(default)]
+    pub fake_count: u32,
+    #[serde(default)]
+    pub elapsed_time_ms: u64,
+    pub created_at: String,
+    #[serde(default)]
+    pub completed_at: Option<String>,
+    #[serde(default)]
+    pub results: Option<Vec<BackendHistoryResultItem>>,
+}
+
+/// 历史查询响应（从后端返回）
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BackendHistoryQueryResponse {
+    pub total: u32,
+    pub page: u32,
+    pub page_size: u32,
+    pub total_pages: u32,
+    #[serde(default)]
+    pub items: Vec<BackendHistoryTaskItem>,
+}
+
+/// 历史统计响应（从后端返回）
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BackendHistoryStatsResponse {
+    #[serde(default)]
+    pub total_tasks: u32,
+    #[serde(default)]
+    pub total_inferences: u32,
+    #[serde(default)]
+    pub total_real: u32,
+    #[serde(default)]
+    pub total_fake: u32,
+    #[serde(default)]
+    pub total_errors: u32,
+    #[serde(default)]
+    pub success_rate: f64,
+    #[serde(default)]
+    pub avg_processing_time_ms: f64,
+    #[serde(default)]
+    pub date_range: Option<BackendDateRange>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BackendDateRange {
+    pub start: Option<String>,
+    pub end: Option<String>,
+}
+
+/// 历史删除响应（从后端返回）
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BackendHistoryDeleteResponse {
+    pub deleted_count: u32,
+    pub message: String,
+}
+
+/// 历史查询响应（返回给前端）
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryQueryResponse {
+    pub total: u32,
+    pub page: u32,
+    pub page_size: u32,
+    pub total_pages: u32,
+    pub items: Vec<HistoryTaskItem>,
+}
+
+/// 历史任务项（返回给前端）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryTaskItem {
+    pub task_id: String,
+    pub client_id: Option<String>,
+    pub mode: String,
+    pub status: String,
+    pub total_items: u32,
+    pub successful_items: u32,
+    pub failed_items: u32,
+    pub real_count: u32,
+    pub fake_count: u32,
+    pub elapsed_time_ms: u64,
+    pub created_at: String,
+    pub completed_at: Option<String>,
+    pub results: Option<Vec<HistoryResultItem>>,
+}
+
+/// 历史结果项（返回给前端）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryResultItem {
+    pub mode: String,
+    pub modality: Option<String>,
+    pub result: String,
+    pub confidence: f64,
+    pub probabilities: Vec<f64>,
+    pub processing_time: u64,
+    pub image_index: Option<u32>,
+    pub error: Option<String>,
+    pub retry_count: u32,
+}
+
+/// 历史统计响应（返回给前端）
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryStatsResponse {
+    pub total_tasks: u32,
+    pub total_inferences: u32,
+    pub total_real: u32,
+    pub total_fake: u32,
+    pub total_errors: u32,
+    pub success_rate: f64,
+    pub avg_processing_time_ms: f64,
+    pub date_range: Option<DateRange>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DateRange {
+    pub start: String,
+    pub end: String,
+}
+
+/// 历史删除响应（返回给前端）
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryDeleteResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+impl From<BackendHistoryResultItem> for HistoryResultItem {
+    fn from(value: BackendHistoryResultItem) -> Self {
+        HistoryResultItem {
+            mode: value.mode,
+            modality: value.modality,
+            result: value.result,
+            confidence: value.confidence,
+            probabilities: value.probabilities,
+            processing_time: value.processing_time,
+            image_index: value.image_index,
+            error: value.error,
+            retry_count: value.retry_count,
+        }
+    }
+}
+
+/// 将后端历史任务项转换为前端格式
+impl From<BackendHistoryTaskItem> for HistoryTaskItem {
+    fn from(value: BackendHistoryTaskItem) -> Self {
+        HistoryTaskItem {
+            task_id: value.task_id,
+            client_id: value.client_id,
+            mode: value.mode,
+            status: value.status,
+            total_items: value.total_items,
+            successful_items: value.successful_items,
+            failed_items: value.failed_items,
+            real_count: value.real_count,
+            fake_count: value.fake_count,
+            elapsed_time_ms: value.elapsed_time_ms,
+            created_at: value.created_at,
+            completed_at: value.completed_at,
+            results: value.results.map(|results| {
+                results.into_iter().map(HistoryResultItem::from).collect()
+            }),
+        }
+    }
+}
+
+/// 将后端统计响应转换为前端格式
+impl From<BackendHistoryStatsResponse> for HistoryStatsResponse {
+    fn from(value: BackendHistoryStatsResponse) -> Self {
+        HistoryStatsResponse {
+            total_tasks: value.total_tasks,
+            total_inferences: value.total_inferences,
+            total_real: value.total_real,
+            total_fake: value.total_fake,
+            total_errors: value.total_errors,
+            success_rate: value.success_rate,
+            avg_processing_time_ms: value.avg_processing_time_ms,
+            date_range: value.date_range.map(|dr| DateRange {
+                start: dr.start.unwrap_or_default(),
+                end: dr.end.unwrap_or_default(),
+            }),
+        }
+    }
+}
+
+/// 查询历史记录
+#[tauri::command]
+pub async fn query_history(
+    params: HistoryQueryParams,
+    api_key: String,
+    http_client: State<'_, Client>,
+) -> Result<HistoryQueryResponse, String> {
+    log::info!("query_history 被调用，params: {:?}, api_key 长度：{}", params, api_key.len());
+
+    let mut api_url = format!("{}/history", get_api_base_url());
+
+    // 构建查询参数
+    let mut query_params = Vec::new();
+    if let Some(ref client_id) = params.client_id {
+        query_params.push(("client_id", client_id.clone()));
+    }
+    if let Some(ref mode) = params.mode {
+        query_params.push(("mode", mode.clone()));
+    }
+    if let Some(ref status) = params.status {
+        query_params.push(("status", status.clone()));
+    }
+    // 解析数字参数（从字符串）
+    if let Some(ref days_str) = params.days {
+        if let Ok(days) = days_str.parse::<u32>() {
+            query_params.push(("days", days.to_string()));
+        }
+    }
+    if let Some(ref page_str) = params.page {
+        if let Ok(page) = page_str.parse::<u32>() {
+            query_params.push(("page", page.to_string()));
+        }
+    }
+    if let Some(ref page_size_str) = params.page_size {
+        if let Ok(page_size) = page_size_str.parse::<u32>() {
+            query_params.push(("page_size", page_size.to_string()));
+        }
+    }
+
+    if !query_params.is_empty() {
+        api_url.push('?');
+        api_url.push_str(
+            &query_params
+                .iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<_>>()
+                .join("&"),
+        );
+    }
+
+    log::info!("查询历史记录：{}", api_url);
+
+    log::info!("发送 HTTP 请求...");
+    let response = http_client
+        .get(&api_url)
+        .header("X-API-Key", &api_key)
+        .send()
+        .await
+        .map_err(|e| {
+            log::error!("HTTP 请求失败：{}", e);
+            format!("网络请求失败：{}", e)
+        })?;
+
+    log::info!("收到 HTTP 响应，状态码：{}", response.status());
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        log::error!("历史查询失败：{} - {}", status, error_text);
+        return Err(format!("服务器返回错误 ({}): {}", status, error_text));
+    }
+
+    log::info!("历史查询响应成功，解析 JSON...");
+
+    // 先获取原始文本用于调试
+    let response_text = response.text().await.map_err(|e| {
+        log::error!("读取响应文本失败：{}", e);
+        format!("读取响应失败：{}", e)
+    })?;
+
+    log::info!("后端返回的原始 JSON: {}", response_text);
+
+    // 手动解析 JSON 进行调试
+    let backend_response: BackendHistoryQueryResponse = serde_json::from_str(&response_text)
+        .map_err(|e| {
+            log::error!("解析响应 JSON 失败：{}", e);
+            format!("解析响应失败：{}", e)
+        })?;
+
+    log::info!("解析成功，total: {}, items: {}", backend_response.total, backend_response.items.len());
+
+    // 转换响应格式
+    let items = backend_response
+        .items
+        .into_iter()
+        .map(HistoryTaskItem::from)
+        .collect();
+
+    Ok(HistoryQueryResponse {
+        total: backend_response.total,
+        page: backend_response.page,
+        page_size: backend_response.page_size,
+        total_pages: backend_response.total_pages,
+        items,
+    })
+}
+
+/// 获取历史统计信息
+#[tauri::command]
+pub async fn get_history_stats(
+    params: Option<HistoryStatsParams>,
+    api_key: String,
+    http_client: State<'_, Client>,
+) -> Result<HistoryStatsResponse, String> {
+    let mut api_url = format!("{}/history/stats", get_api_base_url());
+
+    // 构建查询参数
+    let mut query_params = Vec::new();
+    if let Some(ref p) = params {
+        // 添加 client_id 参数
+        if let Some(ref client_id) = p.client_id {
+            query_params.push(("client_id", client_id.clone()));
+        }
+        // 解析 days 参数（从字符串）
+        if let Some(ref days_str) = p.days {
+            if let Ok(days) = days_str.parse::<u32>() {
+                query_params.push(("days", days.to_string()));
+            }
+        }
+    }
+
+    if !query_params.is_empty() {
+        api_url.push('?');
+        api_url.push_str(
+            &query_params
+                .iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<_>>()
+                .join("&"),
+        );
+    }
+
+    log::info!("获取历史统计：{}", api_url);
+
+    log::info!("发送 HTTP 请求（统计）...");
+    let response = http_client
+        .get(&api_url)
+        .header("X-API-Key", &api_key)
+        .send()
+        .await
+        .map_err(|e| {
+            log::error!("统计 HTTP 请求失败：{}", e);
+            format!("网络请求失败：{}", e)
+        })?;
+
+    log::info!("收到统计 HTTP 响应，状态码：{}", response.status());
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        log::error!("统计查询失败：{} - {}", status, error_text);
+        return Err(format!("服务器返回错误 ({}): {}", status, error_text));
+    }
+
+    log::info!("统计查询响应成功，解析 JSON...");
+
+    // 先获取原始文本用于调试
+    let response_text = response.text().await.map_err(|e| {
+        log::error!("读取统计响应文本失败：{}", e);
+        format!("读取响应失败：{}", e)
+    })?;
+
+    log::info!("统计后端返回的原始 JSON: {}", response_text);
+
+    // 手动解析 JSON 进行调试
+    let backend_response: BackendHistoryStatsResponse = serde_json::from_str(&response_text)
+        .map_err(|e| {
+            log::error!("统计解析响应 JSON 失败：{}", e);
+            format!("解析响应失败：{}", e)
+        })?;
+
+    log::info!("统计解析成功，total_tasks: {}", backend_response.total_tasks);
+
+    Ok(backend_response.into())
+}
+
+/// 删除历史记录
+#[tauri::command]
+pub async fn delete_history(
+    params: HistoryDeleteParams,
+    api_key: String,
+    http_client: State<'_, Client>,
+) -> Result<HistoryDeleteResponse, String> {
+    let mut api_url = format!("{}/history", get_api_base_url());
+
+    // 构建查询参数
+    let mut query_params = Vec::new();
+    if let Some(ref task_ids) = params.task_ids {
+        query_params.push(("task_ids", task_ids.join(",")));
+    }
+    if let Some(days_ago) = params.days_ago {
+        query_params.push(("days_ago", days_ago.to_string()));
+    }
+
+    if !query_params.is_empty() {
+        api_url.push('?');
+        api_url.push_str(
+            &query_params
+                .iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<String>>()
+                .join("&"),
+        );
+    }
+
+    log::info!("删除历史记录：{}", api_url);
+
+    let response = http_client
+        .delete(&api_url)
+        .header("X-API-Key", &api_key)
+        .send()
+        .await
+        .map_err(|e| format!("网络请求失败：{}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        log::error!("历史删除失败：{} - {}", status, error_text);
+        return Err(format!("服务器返回错误 ({}): {}", status, error_text));
+    }
+
+    let backend_response: BackendHistoryDeleteResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("解析响应失败：{}", e))?;
+
+    Ok(HistoryDeleteResponse {
+        success: true,
+        message: backend_response.message,
+    })
+}

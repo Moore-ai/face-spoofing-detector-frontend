@@ -7,14 +7,18 @@ use tokio::sync::Mutex;
 use util::{
     activate_license,
     connect_websocket,
+    delete_history,
     detect_fusion_mode_async,
     detect_single_mode_async,
+    get_history_stats,
     get_supported_formats,
     get_ws_status,
+    query_history,
     validate_image,
     WsConnectionStateRef,
 };
 use reqwest::Client;
+use std::time::Duration;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -33,9 +37,32 @@ pub fn run() {
     // 初始化 WebSocket 连接状态
     let ws_state: WsConnectionStateRef = Arc::new(Mutex::new(util::WsConnectionState::new()));
 
+    // 从环境变量读取 HTTP 客户端超时配置（单位：秒）
+    let request_timeout_secs = std::env::var("HTTP_REQUEST_TIMEOUT")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(30);
+    let connect_timeout_secs = std::env::var("HTTP_CONNECT_TIMEOUT")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(10);
+
+    log::info!(
+        "HTTP 客户端超时配置：请求超时={}s, 连接超时={}s",
+        request_timeout_secs,
+        connect_timeout_secs
+    );
+
+    // 创建带有超时配置的 HTTP 客户端
+    let http_client = Client::builder()
+        .timeout(Duration::from_secs(request_timeout_secs))
+        .connect_timeout(Duration::from_secs(connect_timeout_secs))
+        .build()
+        .expect("Failed to create HTTP client");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(Client::new())
+        .manage(http_client)
         .manage(ConfigState(Arc::new(app_config)))
         .manage(ws_state)
         .invoke_handler(tauri::generate_handler![
@@ -46,6 +73,9 @@ pub fn run() {
             connect_websocket,
             get_ws_status,
             activate_license,
+            query_history,
+            get_history_stats,
+            delete_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
