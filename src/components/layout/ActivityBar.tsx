@@ -42,7 +42,7 @@ export function ActivityBar({
     [activeTab, onTabChange]
   );
 
-  // 默认导航项（工作）
+  // 默认导航项（工作、历史）
   const defaultItems: NavItem[] = [
     {
       id: "work",
@@ -57,6 +57,23 @@ export function ActivityBar({
           strokeWidth="2"
         >
           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        </svg>
+      ),
+    },
+    {
+      id: "history",
+      title: "历史记录",
+      icon: (
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
         </svg>
       ),
     },

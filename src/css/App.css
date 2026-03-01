@@ -1029,3 +1029,403 @@ body,
     font-size: 24px;
   }
 }
+
+/* ===== 历史记录页面 ===== */
+.history-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--vscode-spacing-xl);
+  gap: var(--vscode-spacing-lg);
+  overflow: hidden;
+}
+
+/* 统计卡片 */
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--vscode-spacing-md);
+  padding-bottom: var(--vscode-spacing-md);
+  border-bottom: 1px solid var(--vscode-border);
+}
+
+.history-stats .stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--vscode-spacing-md);
+  background: var(--vscode-card-bg);
+  border-radius: var(--vscode-radius-md);
+  border: 1px solid var(--vscode-card-border);
+}
+
+.history-stats .stat-card .stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--vscode-text-primary);
+}
+
+.history-stats .stat-card .stat-label {
+  font-size: 12px;
+  color: var(--vscode-text-tertiary);
+  margin-top: 4px;
+}
+
+.history-stats .stat-card.real .stat-value {
+  color: var(--vscode-success);
+}
+
+.history-stats .stat-card.fake .stat-value {
+  color: var(--vscode-error);
+}
+
+.history-stats .stat-card.error .stat-value {
+  color: var(--vscode-warning);
+  background: var(--vscode-warning-bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* 过滤工具栏 */
+.history-filters {
+  display: flex;
+  gap: var(--vscode-spacing-md);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.history-filters .filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--vscode-spacing-sm);
+}
+
+.history-filters .filter-group label {
+  font-size: 13px;
+  color: var(--vscode-text-secondary);
+}
+
+.history-filters .filter-group select {
+  padding: 6px 10px;
+  background: var(--vscode-input-bg);
+  border: 1px solid var(--vscode-border);
+  border-radius: 4px;
+  color: var(--vscode-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.history-filters .filter-group select:hover {
+  border-color: var(--vscode-focus-border);
+}
+
+.history-filters .btn {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* 历史列表容器 */
+.history-list {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--vscode-card-bg);
+  border-radius: var(--vscode-radius-md);
+  border: 1px solid var(--vscode-card-border);
+}
+
+.history-list .loading-state,
+.history-list .empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vscode-text-tertiary);
+}
+
+/* 历史表格 */
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.history-table thead {
+  background: var(--vscode-bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.history-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--vscode-text-secondary);
+  border-bottom: 1px solid var(--vscode-border);
+  white-space: nowrap;
+}
+
+.history-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--vscode-border);
+  color: var(--vscode-text-primary);
+}
+
+.history-table tbody tr {
+  cursor: pointer;
+  transition: background-color var(--vscode-transition-fast);
+}
+
+.history-table tbody tr:hover {
+  background: rgba(0, 120, 212, 0.15);
+}
+
+.history-table tbody tr.selected {
+  background: rgba(0, 120, 212, 0.25);
+}
+
+.history-table .task-id {
+  font-family: "SF Mono", "Monaco", "Consolas", monospace;
+  font-size: 12px;
+  color: var(--vscode-text-tertiary);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 状态徽章 */
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge.status-completed {
+  background: var(--vscode-success-bg);
+  color: var(--vscode-success);
+}
+
+.status-badge.status-partial {
+  background: var(--vscode-warning-bg);
+  color: var(--vscode-warning);
+}
+
+.status-badge.status-failed {
+  background: var(--vscode-error-bg);
+  color: var(--vscode-error);
+}
+
+/* 模式徽章 */
+.mode-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--vscode-blue-bg);
+  color: var(--vscode-blue);
+}
+
+.mode-badge.fusion {
+  background: var(--vscode-purple-bg);
+  color: var(--vscode-purple);
+}
+
+/* 图标按钮 */
+.btn-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--vscode-text-tertiary);
+  transition: all var(--vscode-transition-fast);
+}
+
+.btn-icon:hover {
+  background: var(--vscode-border);
+  color: var(--vscode-text-primary);
+}
+
+/* 分页 */
+.history-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vscode-spacing-md);
+  padding: var(--vscode-spacing-md);
+  border-top: 1px solid var(--vscode-border);
+  background: var(--vscode-bg);
+}
+
+.history-pagination .page-info {
+  font-size: 13px;
+  color: var(--vscode-text-secondary);
+}
+
+.history-pagination .btn {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* 详情面板（Modal） */
+.history-detail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--vscode-spacing-xl);
+}
+
+.history-detail .detail-content {
+  background: var(--vscode-card-bg);
+  border-radius: var(--vscode-radius-lg);
+  border: 1px solid var(--vscode-border);
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5);
+}
+
+.history-detail .detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--vscode-spacing-lg);
+  border-bottom: 1px solid var(--vscode-border);
+}
+
+.history-detail .detail-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--vscode-text-primary);
+  margin: 0;
+}
+
+.history-detail .detail-body {
+  padding: var(--vscode-spacing-lg);
+}
+
+.history-detail .detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--vscode-border);
+}
+
+.history-detail .detail-row:last-child {
+  border-bottom: none;
+}
+
+.history-detail .detail-label {
+  font-size: 13px;
+  color: var(--vscode-text-tertiary);
+  font-weight: 500;
+}
+
+.history-detail .detail-value {
+  font-size: 13px;
+  color: var(--vscode-text-primary);
+}
+
+/* 详情结果网格 */
+.detail-results {
+  margin-top: var(--vscode-spacing-lg);
+  padding-top: var(--vscode-spacing-lg);
+  border-top: 1px solid var(--vscode-border);
+}
+
+.detail-results h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-text-primary);
+  margin-bottom: var(--vscode-spacing-md);
+}
+
+.detail-results .results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--vscode-spacing-md);
+}
+
+.detail-results .result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--vscode-spacing-md);
+  border-radius: var(--vscode-radius-md);
+  border: 1px solid var(--vscode-card-border);
+  background: var(--vscode-bg);
+}
+
+.detail-results .result-card.real {
+  border-left-color: var(--vscode-success);
+}
+
+.detail-results .result-card.fake {
+  border-left-color: var(--vscode-error);
+}
+
+.detail-results .result-card.error {
+  border-left-color: var(--vscode-warning);
+}
+
+.detail-results .result-card .result-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-text-primary);
+  font-family: "SF Mono", "Monaco", "Consolas", monospace;
+}
+
+.detail-results .result-card .result-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.detail-results .result-card.real .result-badge {
+  background: var(--vscode-success-bg);
+  color: var(--vscode-success);
+}
+
+.detail-results .result-card.fake .result-badge {
+  background: var(--vscode-error-bg);
+  color: var(--vscode-error);
+}
+
+.detail-results .result-card.error .result-badge {
+  background: var(--vscode-warning-bg);
+  color: var(--vscode-warning);
+}
+
+.detail-results .result-card .result-conf {
+  font-size: 12px;
+  color: var(--vscode-text-secondary);
+}
+
+.detail-results .result-card .result-error {
+  font-size: 11px;
+  color: var(--vscode-warning);
+  background: var(--vscode-warning-bg);
+  padding: 4px 6px;
+  border-radius: 4px;
+}

@@ -5,6 +5,7 @@ import { ModeSelector } from "./components/detection/ModeSelector";
 import { ImageUploader } from "./components/detection/ImageUploader";
 import { ResultPanel } from "./components/detection/ResultPanel";
 import { ActivationPage } from "./components/activation/ActivationPage";
+import { HistoryPage } from "./components/history/HistoryPage";
 import { useDetection } from "./hooks/useDetection";
 import "./css/App.css";
 
@@ -120,11 +121,15 @@ function App(): React.ReactElement {
 
         {/* ===== 主内容区 (Main Content) ===== */}
         <main className="main-content">
-          <ResultPanel
-            images={images}
-            status={status}
-            userState={userState}
-          />
+          {activeTab === "work" ? (
+            <ResultPanel
+              images={images}
+              status={status}
+              userState={userState}
+            />
+          ) : activeTab === "history" ? (
+            <HistoryPage clientId={userState.clientId} />
+          ) : null}
         </main>
       </div>
 

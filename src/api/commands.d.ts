@@ -12,6 +12,10 @@ import type {
   AsyncTaskResponse,
   ActivateRequest,
   ActivateResponse,
+  HistoryQueryResponse,
+  HistoryStatsResponse,
+  HistoryDeleteResponse,
+  HistoryDeleteParams,
 } from "./tauri";
 
 declare global {
@@ -25,6 +29,9 @@ declare global {
         (cmd: "connect_websocket", args: { apiKey: string }): Promise<string>;
         (cmd: "get_ws_status"): Promise<[string | null, boolean]>;
         (cmd: "activate_license", args: { request: ActivateRequest }): Promise<ActivateResponse>;
+        (cmd: "query_history", args: { params: Record<string, string> }): Promise<HistoryQueryResponse>;
+        (cmd: "get_history_stats", args: { params?: Record<string, string> }): Promise<HistoryStatsResponse>;
+        (cmd: "delete_history", args: { params: HistoryDeleteParams }): Promise<HistoryDeleteResponse>;
       };
     };
   }

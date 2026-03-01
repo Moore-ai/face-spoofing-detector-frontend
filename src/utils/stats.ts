@@ -25,10 +25,14 @@ export function calculateDetectionStats(
   const errorCount = completedResults.filter((r) => r.result === "error").length;
   const totalCount = completedResults.length;
   const fakeCount = totalCount - realCount - errorCount;  // 排除错误项
+
+  // 平均置信度只计算成功的结果（real 和 fake），不包括错误项
+  const validResults = completedResults.filter((r) => r.result !== "error");
   const averageConfidence =
-    totalCount > 0
-      ? completedResults.reduce((sum, r) => sum + r.confidence, 0) / totalCount
+    validResults.length > 0
+      ? validResults.reduce((sum, r) => sum + r.confidence, 0) / validResults.length
       : 0;
+
   const realPercentage = totalCount > 0 ? Math.round((realCount / totalCount) * 100) : 0;
   const fakePercentage = totalCount > 0 ? Math.round((fakeCount / totalCount) * 100) : 0;
   const errorPercentage = totalCount > 0 ? Math.round((errorCount / totalCount) * 100) : 0;
