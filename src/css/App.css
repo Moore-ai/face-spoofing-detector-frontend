@@ -29,8 +29,10 @@
   /* 卡片/面板 */
   --vscode-panel-bg: #1e1e1e;          /* 面板背景 */
   --vscode-card-bg: #252526;           /* 卡片背景 */
+  --vscode-input-bg: #3c3c3c;          /* 输入框背景 */
   --vscode-card-border: #3e3e42;       /* 卡片边框 */
   --vscode-card-hover: #2d2d30;        /* 卡片悬停 */
+  --vscode-focus-border: #007fd4;      /* 聚焦边框 */
 
   /* 滚动条 */
   --vscode-scrollbar: #3e3e42;
@@ -1040,50 +1042,145 @@ body,
   overflow: hidden;
 }
 
-/* 统计卡片 */
-.history-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: var(--vscode-spacing-md);
-  padding-bottom: var(--vscode-spacing-md);
+/* ===== History Stats Panel - Compact Embedded Style ===== */
+.history-stats-compact {
+  padding: 8px 12px;
+  background: var(--vscode-card-bg);
+  border: 1px solid var(--vscode-border);
+  border-radius: var(--vscode-radius-md);
+  margin-bottom: var(--vscode-spacing-md);
+}
+
+.compact-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
   border-bottom: 1px solid var(--vscode-border);
 }
 
-.history-stats .stat-card {
+.compact-title {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: var(--vscode-spacing-md);
-  background: var(--vscode-card-bg);
-  border-radius: var(--vscode-radius-md);
-  border: 1px solid var(--vscode-card-border);
-}
-
-.history-stats .stat-card .stat-value {
-  font-size: 24px;
+  gap: 6px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--vscode-text-primary);
+  color: var(--vscode-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.history-stats .stat-card .stat-label {
-  font-size: 12px;
+.compact-title svg {
+  width: 12px;
+  height: 12px;
+  color: var(--vscode-blue);
+}
+
+.compact-meta {
+  font-size: 10px;
   color: var(--vscode-text-tertiary);
-  margin-top: 4px;
+  font-family: "SF Mono", monospace;
 }
 
-.history-stats .stat-card.real .stat-value {
+.compact-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.compact-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.compact-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.compact-label {
+  font-size: 10px;
+  color: var(--vscode-text-tertiary);
+}
+
+.compact-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--vscode-text-primary);
+  font-family: "SF Mono", monospace;
+}
+
+.compact-item.success .compact-value {
   color: var(--vscode-success);
 }
 
-.history-stats .stat-card.fake .stat-value {
-  color: var(--vscode-error);
+.distribution {
+  padding-left: 12px;
+  border-left: 1px solid var(--vscode-border);
 }
 
-.history-stats .stat-card.error .stat-value {
-  color: var(--vscode-warning);
-  background: var(--vscode-warning-bg);
+.compact-tile {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 4px;
+  border: 1px solid var(--vscode-border);
+}
+
+.tile-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.real .tile-dot { background: var(--vscode-success); box-shadow: 0 0 4px var(--vscode-success); }
+.fake .tile-dot { background: var(--vscode-danger); box-shadow: 0 0 4px var(--vscode-danger); }
+.error .tile-dot { background: var(--vscode-warning); box-shadow: 0 0 4px var(--vscode-warning); }
+
+.tile-label {
+  font-size: 10px;
+  color: var(--vscode-text-secondary);
+}
+
+.tile-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-text-primary);
+  font-family: "SF Mono", monospace;
+}
+
+.performance {
+  margin-left: auto;
+  padding-left: 12px;
+  border-left: 1px solid var(--vscode-border);
+}
+
+.font-mono {
+  font-family: "SF Mono", monospace;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .stats-hero {
+    flex-direction: column;
+    gap: var(--vscode-spacing-md);
+  }
+
+  .hero-divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 10%, var(--vscode-border) 50%, transparent 90%);
+  }
+
+  .stats-detail-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* 过滤工具栏 */
@@ -1106,17 +1203,33 @@ body,
 }
 
 .history-filters .filter-group select {
-  padding: 6px 10px;
+  padding: 4px 8px;
   background: var(--vscode-input-bg);
   border: 1px solid var(--vscode-border);
-  border-radius: 4px;
+  border-radius: var(--vscode-radius-sm);
   color: var(--vscode-text-primary);
-  font-size: 13px;
+  font-size: 11px;
   cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s ease;
 }
 
 .history-filters .filter-group select:hover {
+  background: var(--vscode-card-hover);
+  border-color: var(--vscode-text-tertiary);
+  box-shadow: 0 0 8px rgba(0, 127, 212, 0.2);
+}
+
+.history-filters .filter-group select:focus {
   border-color: var(--vscode-focus-border);
+  background: var(--vscode-input-bg);
+  box-shadow: 0 0 0 2px rgba(0, 127, 212, 0.1);
+}
+
+.history-filters .filter-group select option {
+  background: var(--vscode-input-bg);
+  color: var(--vscode-text-primary);
 }
 
 .history-filters .btn {
@@ -1428,4 +1541,134 @@ body,
   background: var(--vscode-warning-bg);
   padding: 4px 6px;
   border-radius: 4px;
+}
+
+/* ===== Stats Panel - Compact Embedded Style ===== */
+.stats-panel-compact {
+  margin-bottom: var(--vscode-spacing-lg);
+}
+
+/* 进度条区域 */
+.stats-progress-section {
+  margin-bottom: var(--vscode-spacing-md);
+}
+
+.stats-progress-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--vscode-card-bg);
+}
+
+.progress-segment {
+  height: 100%;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-segment.real {
+  background: linear-gradient(90deg, var(--vscode-success), #a8e6a8);
+}
+
+.progress-segment.fake {
+  background: linear-gradient(90deg, var(--vscode-danger), #ffa07a);
+}
+
+.progress-segment.error {
+  background: linear-gradient(90deg, var(--vscode-warning), #ffd700);
+}
+
+/* 紧凑统计网格 */
+.stats-compact-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vscode-spacing-sm);
+}
+
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--vscode-border);
+  border-radius: 20px;
+  transition: all 0.2s ease;
+}
+
+.stat-pill:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--vscode-border-light);
+}
+
+.stat-pill-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-pill-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.stat-pill-icon.real {
+  color: var(--vscode-success);
+}
+
+.stat-pill-icon.fake {
+  color: var(--vscode-danger);
+}
+
+.stat-pill-icon.error {
+  color: var(--vscode-warning);
+}
+
+.stat-pill-icon.confidence {
+  color: var(--vscode-blue);
+}
+
+.stat-pill-value {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: "SF Mono", monospace;
+  color: var(--vscode-text-primary);
+}
+
+.stat-pill-text {
+  font-size: 11px;
+  color: var(--vscode-text-tertiary);
+}
+
+.stat-pill-percent {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: "SF Mono", monospace;
+  color: var(--vscode-text-secondary);
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+/* 置信度药丸特殊样式 */
+.confidence-pill {
+  background: rgba(55, 148, 255, 0.08);
+  border-color: rgba(55, 148, 255, 0.2);
+}
+
+.confidence-mini-bar {
+  width: 40px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.confidence-mini-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--vscode-blue), var(--vscode-blue-light));
+  border-radius: 2px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }

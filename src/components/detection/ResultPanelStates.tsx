@@ -1,6 +1,7 @@
 import type { ImageInfo, DetectionResultItem } from "../../types";
 import type { BaseProps } from "../../types";
 import { DetectionCard } from "./DetectionCard";
+import { StatsPanel } from "./StatsPanel";
 import { type DetectionStats } from "../../utils/stats";
 
 interface LoadingStateProps extends BaseProps {
@@ -59,30 +60,8 @@ export function ResultsView({
 }: ResultsViewProps): React.ReactElement {
   return (
     <div className={`result-panel ${className}`}>
-      <div className="result-stats">
-        <div className="stat-card total">
-          <span className="stat-value">{stats.totalCount}</span>
-          <span className="stat-label">总检测数</span>
-        </div>
-        <div className="stat-card real">
-          <span className="stat-value">{stats.realCount}</span>
-          <span className="stat-label">真人 ({stats.realPercentage}%)</span>
-        </div>
-        <div className="stat-card fake">
-          <span className="stat-value">{stats.fakeCount}</span>
-          <span className="stat-label">伪人脸 ({stats.fakePercentage}%)</span>
-        </div>
-        {stats.errorCount > 0 && (
-          <div className="stat-card error">
-            <span className="stat-value">{stats.errorCount}</span>
-            <span className="stat-label">错误 ({stats.errorPercentage}%)</span>
-          </div>
-        )}
-        <div className="stat-card confidence">
-          <span className="stat-value">{Math.round(stats.averageConfidence * 100)}%</span>
-          <span className="stat-label">平均置信度</span>
-        </div>
-      </div>
+      {/* 使用新的仪表盘风格统计面板 */}
+      <StatsPanel stats={stats} />
 
       <div className="result-divider" />
 
