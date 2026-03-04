@@ -1,7 +1,7 @@
 # 客户端 - 服务器通信文档
 
-**版本**: 2.0
-**最后更新**: 2026-02-27
+**版本**: 2.1
+**最后更新**: 2026-03-04
 **适用系统**: 人脸活体检测系统（Tauri + React 前端 + FastAPI 后端）
 
 ---
@@ -13,9 +13,11 @@
 3. [HTTP API 通信](#http-api-通信)
 4. [WebSocket 通信](#websocket-通信)
 5. [异步检测任务流程](#异步检测任务流程)
-6. [消息格式详解](#消息格式详解)
-7. [错误处理](#错误处理)
-8. [连接管理](#连接管理)
+6. [任务取消流程](#任务取消流程)
+7. [历史记录 API](#历史记录-api)
+8. [消息格式详解](#消息格式详解)
+9. [错误处理](#错误处理)
+10. [连接管理](#连接管理)
 
 ---
 
@@ -127,10 +129,19 @@ Content-Type: application/json
 | 端点 | 方法 | 认证 | 描述 |
 |------|------|------|------|
 | `/auth/activate` | POST | 无 | 激活码换取 API Key |
+| `/auth/token` | POST | 无 | 管理员登录获取 JWT Token |
+| `/auth/activation-codes` | POST/GET/PUT/DELETE | JWT | 激活码管理（管理员） |
 | `/infer/single` | POST | 需要 | 单模态检测 |
 | `/infer/fusion` | POST | 需要 | 融合模式检测 |
 | `/infer/task/{task_id}` | GET | 需要 | 查询任务状态 |
+| `/infer/task/{task_id}` | DELETE | 需要 | **取消任务** |
+| `/infer/tasks` | GET | 需要 | 获取任务列表 |
+| `/infer/queue/status` | GET | JWT | 获取队列状态（管理员） |
 | `/infer/ws` | WebSocket | 可选 | 实时进度推送 |
+| `/history` | GET | 需要 | 查询历史记录 |
+| `/history/stats` | GET | 需要 | 获取历史统计 |
+| `/history` | DELETE | 需要 | 删除历史记录 |
+| `/storage/images` | GET/POST/DELETE | 需要 | 图片存储管理 |
 | `/health` | GET | 无 | 健康检查 |
 
 ### 请求/响应格式
@@ -218,7 +229,23 @@ ws://localhost:8000/infer/ws?api_key=sk_xxx
 wss://api.example.com/infer/ws?token=jwt_xxx  (生产环境)
 ```
 
+**注意**:
+- `api_key` 参数用于认证，可选
+- 未认证的连接可以被拒绝（取决于后端配置）
+- 连接成功后，后端会发送 `{"type": "connected", "client_id": "..."}` 消息
+
 ### 消息类型
+
+系统支持以下 WebSocket 消息类型：
+
+| 消息类型 | 方向 | 描述 |
+|---------|------|------|
+| `connected` | 服务器→客户端 | 连接建立确认 |
+| `progress_update` / `progress` | 服务器→客户端 | 处理进度更新 |
+| `task_completed` | 服务器→客户端 | 任务全部成功完成 |
+| `task_partial_failure` | 服务器→客户端 | 任务部分失败 |
+| `task_failed` | 服务器→客户端 | 任务完全失败 |
+| `task_cancelled` | 服务器→客户端 | **任务被用户取消** |
 
 #### 连接确认消息（服务器 → 客户端）
 
@@ -302,20 +329,183 @@ wss://api.example.com/infer/ws?token=jwt_xxx  (生产环境)
 }
 ```
 
-#### 任务失败消息（服务器 → 客户端）
+#### 任务取消消息（服务器 → 客户端）
 
 ```json
 {
-  "type": "task_failed",
+  "type": "task_cancelled",
   "data": {
     "task_id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
-    "status": "failed",
-    "message": "服务器内部错误：模型加载失败"
+    "status": "cancelled",
+    "message": "任务已取消",
+    "total_items": 10,
+    "processed_items": 3,
+    "successful_items": 3,
+    "failed_items": 0
   }
 }
 ```
 
+**注意**: Rust 后端会将 `task_cancelled` 消息转发为 `ws_task_completed` 事件，`status` 字段设置为 `"cancelled"`，前端收到后设置状态为 `idle` 并显示提示。
+
 ---
+
+## 任务取消流程
+
+### 取消任务时序图
+
+```
+┌───────────┐      ┌───────────┐      ┌───────────┐      ┌───────────┐
+│   用户    │      │ Tauri App │      │  Rust    │      │ FastAPI   │
+│           │      │  (React)  │      │  Backend │      │  Server   │
+└───────────┘      └───────────┘      └───────────┘      └───────────┘
+     │                 │                  │                  │
+     │ 1. 点击"取消任务"│                  │                  │
+     │────────────────>│                  │                  │
+     │                 │                  │                  │
+     │                 │ 2. 获取 taskId   │                  │
+     │                 │    和 apiKey     │                  │
+     │                 │                  │                  │
+     │                 │ 3. cancelDetection(taskId, apiKey) │
+     │                 │─────────────────>│                  │
+     │                 │                  │ 4. DELETE       │
+     │                 │                  │    /infer/task/{id}
+     │                 │                  │─────────────────>│
+     │                 │                  │                  │ 5. 设置取消标志
+     │                 │                  │                  │    is_cancelling=true
+     │                 │                  │ 6. 返回任务状态  │
+     │                 │                  │<─────────────────│
+     │                 │<─────────────────│                  │
+     │                 │                  │                  │
+     │                 │                  │ 7. 后台任务检查取消 │
+     │                 │                  │    check_cancellation()
+     │                 │                  │                  │
+     │                 │                  │ 8. 发送 task_cancelled
+     │                 │<─────────────────│─────────────────│
+     │                 │ 9. 转发为        │                  │
+     │                 │    ws_task_completed
+     │                 │    status="cancelled"
+     │<────────────────│ 10. 显示"已取消"  │                  │
+```
+
+### 前端代码示例
+
+```typescript
+// useDetection.ts - 取消任务逻辑
+const cancel = useCallback(async () => {
+  const apiKey = localStorage.getItem("api_key") || "";
+  const taskId = userState.taskId;  // 获取当前任务 ID
+
+  if (!taskId) {
+    console.error("取消任务失败：taskId 为空");
+    return;
+  }
+
+  try {
+    await cancelDetection(taskId, apiKey);  // 调用 Rust 命令
+    setError("检测任务已取消");
+    setStatus("idle");  // 重置状态
+    cleanupProgressListeners();  // 清理监听器
+    setUserState((prev) => ({
+      ...prev,
+      taskId: null,  // 清空任务 ID
+    }));
+  } catch (err) {
+    console.error("取消任务失败:", err);
+  }
+}, [cleanupProgressListeners, userState.taskId]);
+```
+
+### Rust 后端代码示例
+
+```rust
+// src-tauri/src/util.rs
+#[tauri::command]
+pub async fn cancel_detection(
+    task_id: String,
+    api_key: String,
+    http_client: State<'_, Client>,
+) -> Result<AsyncTaskResponse, String> {
+    let api_url = format!("{}/infer/task/{}", get_api_base_url(), task_id);
+
+    let response = http_client
+        .delete(&api_url)
+        .header("X-API-Key", &api_key)
+        .send()
+        .await
+        .map_err(|e| format!("网络请求失败：{}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("取消任务失败 ({}): {}", response.status(), response.text().await?));
+    }
+
+    let task_response: AsyncTaskResponse = serde_json::from_str(&response.text().await?)?;
+    Ok(task_response)
+}
+```
+
+### 后端取消逻辑（Python）
+
+```python
+# backend/controller/infer_controller.py
+@router.delete("/task/{task_id}", response_model=TaskStatusResponse)
+async def cancel_task_endpoint(
+    task_id: str,
+    auth: Annotated[AuthCredentials, Depends(get_current_user)],
+):
+    # 1. 验证认证
+    if not auth.authenticated:
+        raise HTTPException(status_code=401, detail="未授权访问")
+
+    # 2. 获取任务状态
+    task = await progress_tracker.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    # 3. 检查是否可取消
+    if task.status in ("completed", "partial_failure", "failed", "cancelled"):
+        raise HTTPException(status_code=400, detail=f"无法取消任务，当前状态：{task.status}")
+
+    # 4. 设置取消标志
+    success = await progress_tracker.cancel_task(task_id, "用户请求取消")
+    if not success:
+        raise HTTPException(status_code=400, detail="无法取消任务")
+
+    # 5. 等待任务处理取消逻辑
+    await asyncio.sleep(0.1)
+
+    # 6. 返回更新后的任务状态
+    updated_task = await progress_tracker.get_task(task_id)
+    return TaskStatusResponse(...)
+```
+
+### 取消检测点
+
+后端任务在以下位置检查取消标志：
+
+```python
+# backend/controller/infer_controller.py
+
+# 1. 图片解码阶段
+for i, img_base64 in enumerate(images):
+    if await progress_tracker.check_cancellation(task_id):
+        await progress_tracker.confirm_cancel(task_id)
+        await connection_manager.broadcast_by_task(
+            {"type": "task_cancelled", ...}, task_id
+        )
+        return
+    decoded_images.append(decode_base64_image(img_base64))
+
+# 2. 推理完成后
+batch_results = await infer_service.detect_single_batch(...)
+
+if await progress_tracker.check_cancellation(task_id):
+    await progress_tracker.confirm_cancel(task_id)
+    await connection_manager.broadcast_by_task(
+        {"type": "task_cancelled", ...}, task_id
+    )
+    return
+```
 
 ## 异步检测任务流程
 
@@ -485,13 +675,58 @@ interface RustTaskDetectionResultItem {
 
 // 检测结果（前端内部使用）
 interface DetectionResultItem {
-  id: string;
+  id: string;           // 格式：`${taskId}_${processedItems}`
   result: "real" | "fake" | "error";
   confidence: number;
-  timestamp: string;
+  timestamp: string;    // ISO 8601
   processingTime: number;
   errorMessage?: string;
   imageIndex?: number;
+}
+
+// 取消任务 API
+export async function cancelDetection(taskId: string, apiKey: string): Promise<AsyncTaskResponse>
+
+// 历史记录相关类型
+interface HistoryTaskItem {
+  taskId: string;
+  clientId?: string;
+  mode: string;
+  status: string;       // "completed" | "partial_failure" | "failed"
+  totalItems: number;
+  successfulItems: number;
+  failedItems: number;
+  realCount: number;
+  fakeCount: number;
+  elapsedTimeMs: number;
+  createdAt: string;
+  completedAt?: string;
+  results?: HistoryResultItem[];
+}
+
+interface HistoryResultItem {
+  mode: string;
+  modality?: string;    // "rgb" | "ir"
+  result: string;
+  confidence: number;
+  probabilities: number[];
+  processingTime: number;
+  imageIndex?: number;
+  error?: string;
+}
+
+interface HistoryStatsResponse {
+  totalTasks: number;
+  totalInferences: number;
+  totalReal: number;
+  totalFake: number;
+  totalErrors: number;
+  successRate: number;      // 0-100
+  avgProcessingTimeMs: number;
+  dateRange?: {
+    start: string;
+    end: string;
+  };
 }
 ```
 
@@ -543,9 +778,223 @@ class DetectionResultItem(BaseModel):
 
 ---
 
+## 历史记录 API
+
+历史记录功能用于查询、统计和删除已完成的检测任务。所有检测任务完成后会自动保存到服务器数据库。
+
+### API 端点
+
+| 端点 | 方法 | 认证 | 描述 |
+|------|------|------|------|
+| `/history` | GET | 需要 | 查询历史记录（支持分页和过滤） |
+| `/history/stats` | GET | 需要 | 获取统计信息 |
+| `/history` | DELETE | 需要 | 删除历史记录 |
+| `/history/task/{task_id}` | GET | 需要 | 获取单个任务详情 |
+
+### 查询历史记录
+
+**请求示例**:
+```http
+GET /history?page=1&page_size=20&mode=single&status=completed&days=7&client_id=xxx HTTP/1.1
+Host: localhost:8000
+X-API-Key: sk_xxx
+```
+
+**查询参数**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `page` | integer | 否 | 页码（默认 1，从 1 开始） |
+| `page_size` | integer | 否 | 每页数量（默认 20，最大 100） |
+| `client_id` | string | 否 | 客户端 ID 过滤 |
+| `mode` | string | 否 | 模式过滤（`single` / `fusion`） |
+| `status` | string | 否 | 状态过滤（逗号分隔：`completed,partial_failure,failed`） |
+| `days` | integer | 否 | 最近 N 天的记录 |
+
+**响应示例**:
+```json
+{
+  "total": 128,
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 7,
+  "items": [
+    {
+      "task_id": "a1b2c3d4-...",
+      "client_id": "550e8400-...",
+      "mode": "single",
+      "status": "completed",
+      "total_items": 5,
+      "successful_items": 5,
+      "failed_items": 0,
+      "real_count": 3,
+      "fake_count": 2,
+      "elapsed_time_ms": 1234,
+      "created_at": "2026-03-04T10:00:00Z",
+      "completed_at": "2026-03-04T10:00:01Z",
+      "results": [
+        {
+          "mode": "single",
+          "result": "real",
+          "confidence": 0.95,
+          "probabilities": [0.05, 0.95],
+          "processing_time": 120,
+          "image_index": 0
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 获取统计信息
+
+**请求示例**:
+```http
+GET /history/stats?mode=single&days=30 HTTP/1.1
+Host: localhost:8000
+X-API-Key: sk_xxx
+```
+
+**响应示例**:
+```json
+{
+  "total_tasks": 128,
+  "total_inferences": 256,
+  "total_real": 180,
+  "total_fake": 50,
+  "total_errors": 26,
+  "success_rate": 89.84,
+  "avg_processing_time_ms": 234.5,
+  "date_range": {
+    "start": "2026-02-02T00:00:00Z",
+    "end": "2026-03-04T23:59:59Z"
+  }
+}
+```
+
+**统计字段说明**:
+| 字段 | 说明 | 计算方式 |
+|------|------|----------|
+| `total_tasks` | 总任务数 | 符合条件的任务总数 |
+| `total_inferences` | 总推理数 | 所有任务的图片总数 |
+| `total_real` | 真实人脸总数 | `SUM(real_count)` |
+| `total_fake` | 攻击人脸总数 | `SUM(fake_count)` |
+| `total_errors` | 错误总数 | `SUM(error_count)` |
+| `success_rate` | 成功率 | `(total_real + total_fake) / (total_real + total_fake + total_errors) × 100` |
+| `avg_processing_time_ms` | 平均处理时间 | `AVG(elapsed_time_ms)` |
+
+### 删除历史记录
+
+**请求示例**:
+```http
+DELETE /history?task_ids=id1,id2,id3 HTTP/1.1
+Host: localhost:8000
+X-API-Key: sk_xxx
+```
+
+或使用 `days_ago` 参数删除旧记录：
+```http
+DELETE /history?days_ago=30 HTTP/1.1
+Host: localhost:8000
+X-API-Key: sk_xxx
+```
+
+**响应示例**:
+```json
+{
+  "deleted_count": 3,
+  "message": "成功删除 3 条记录"
+}
+```
+
+### 认证说明
+
+- **普通用户**（API Key 认证）：只能查询/删除自己的记录
+- **管理员**（JWT Token 认证）：可以查询/删除所有记录
+
+后端通过 `api_key_hash` 来识别用户身份：
+```python
+# 从 auth.user_id 提取 api_key_hash
+# auth.user_id 格式："api_key:activated_ACT_xxxxxx"
+api_key_hash = auth.user_id.replace("api_key:", "")[:32]
+```
+
+### 前端查询代码示例
+
+```typescript
+// src/api/tauri.ts
+export async function queryHistory(params: HistoryQueryParams): Promise<HistoryQueryResponse> {
+  const queryParams: Record<string, string> = {};
+  if (params.clientId) queryParams.clientId = params.clientId;
+  if (params.mode) queryParams.mode = params.mode;
+  if (params.status) queryParams.status = params.status;
+  if (params.days) queryParams.days = params.days.toString();
+  if (params.page) queryParams.page = params.page.toString();
+  if (params.pageSize) queryParams.pageSize = params.pageSize.toString();
+
+  const apiKey = getApiKey();  // 从 localStorage 获取
+  return await invoke<HistoryQueryResponse>("query_history", {
+    params: queryParams,
+    apiKey,
+  });
+}
+
+// src/components/history/HistoryPage.tsx
+const loadData = useCallback(async () => {
+  const params: HistoryQueryParams = { page, pageSize };
+  // 注意：不传入 clientId，后端已通过 api_key_hash 过滤
+  if (filters.mode) params.mode = filters.mode;
+  if (filters.status) params.status = filters.status;
+  if (filters.days) params.days = parseInt(filters.days, 10);
+
+  const [historyRes, statsRes] = await Promise.all([
+    queryHistory(params),
+    getHistoryStats({ mode: filters.mode, status: filters.status, days: parseInt(filters.days, 10) }),
+  ]);
+
+  setHistoryItems(historyRes.items);
+  setStats(statsRes);
+}, [page, filters]);
+```
+
+### 注意事项
+
+1. **api_key_hash 一致性**: 保存和查询时使用相同的 `api_key_hash` 计算方式
+2. **不使用 clientId 过滤**: 前端查询时不传入 `clientId` 参数，避免 WebSocket 重连后查询不到新数据
+3. **分页性能**: `page_size` 最大为 100，建议默认使用 20
+4. **日期范围**: `days` 参数用于查询最近 N 天的记录，从当前时间往前推算
+
+---
+
 ## 错误处理
 
 ### 错误类型
+
+| 错误级别 | 触发条件 | 客户端响应 |
+|---------|---------|----------|
+| **连接错误** | WebSocket 连接失败 | 显示"连接后端失败"，提示检查后端服务 |
+| **认证错误** | API Key 无效/过期 | 返回激活页面，要求重新激活 |
+| **推理错误** | 单张图片推理失败 | `result: "error"`，显示错误卡片 |
+| **任务失败** | 整个任务执行失败 | 显示错误消息，允许重试 |
+| **取消错误** | 取消已完成/不存在任务 | 显示相应提示（400/404） |
+
+### 取消任务错误响应
+
+**取消已完成的任务** (400):
+```json
+{
+  "detail": "无法取消任务，当前状态：completed"
+}
+```
+
+**取消不存在的任务** (404):
+```json
+{
+  "detail": "任务不存在"
+}
+```
+
+### 错误响应格式
 
 | 错误级别 | 触发条件 | 客户端响应 |
 |---------|---------|----------|
@@ -630,6 +1079,8 @@ const unlistenFailed = await listenWsTaskFailed((wsMsg) => {
 
 ```
 连接建立 → 等待 client_id → 连接成功 → 心跳保持 → 接收消息 → 断开/重连
+              ↓
+        发起检测任务 → 接收进度 → 任务完成/取消 → 清理监听器
 ```
 
 ### 连接状态管理 (Rust)
@@ -677,12 +1128,43 @@ const registerProgressListeners = useCallback(async () => {
   cleanupProgressListeners();  // 先清理旧的
 
   const unlistenProgress = await listenWsProgress(...);
-  const unlistenCompleted = await listenWsTaskCompleted(...);
+  const unlistenCompleted = await listenWsTaskCompleted((wsMsg) => {
+    // 检查 status 字段，处理取消状态
+    if (wsMsg.status === "cancelled") {
+      setStatus("idle");
+      setError("检测任务已取消");
+    } else {
+      setStatus("success");
+    }
+    setUserState((prev) => ({ ...prev, taskId: null }));
+  });
   const unlistenFailed = await listenWsTaskFailed(...);
 
   unlistenFnsRef.current = [unlistenProgress, unlistenCompleted, unlistenFailed];
 }, []);
+
+// 取消任务时清理监听器
+const cancel = useCallback(async () => {
+  const taskId = userState.taskId;
+  const apiKey = localStorage.getItem("api_key") || "";
+
+  if (!taskId) return;
+
+  await cancelDetection(taskId, apiKey);
+  cleanupProgressListeners();  // 清理进度监听器
+  setStatus("idle");
+  setUserState((prev) => ({ ...prev, taskId: null }));
+}, [userState.taskId]);
 ```
+
+### 监听器清理策略
+
+| 场景 | 清理的监听器 | 保留的监听器 |
+|------|------------|-------------|
+| `reset()` | 进度/完成/失败监听器 | `ws_connected` |
+| `cancel()` | 进度/完成/失败监听器 | `ws_connected` |
+| 组件卸载 | 所有监听器 | 无 |
+| 重新检测 | 进度/完成/失败监听器，然后重新注册 | `ws_connected` |
 
 ### 连接重连策略
 
@@ -690,6 +1172,19 @@ const registerProgressListeners = useCallback(async () => {
 2. 用户重新点击"开始检测" → 自动调用 `connectWebsocket()`
 3. Rust 后端会断开旧连接，建立新连接
 4. 前端通过 `ws_connected` 事件获取新的 `client_id`
+
+### 任务取消处理策略
+
+- **取消时机**: 仅在任务进行中（`status === "detecting"` 或 `"connecting"`）且存在有效 `taskId` 时显示
+- **取消后行为**:
+  - 保留已处理的检测结果
+  - 状态重置为 `idle`
+  - 显示"检测任务已取消"提示信息
+  - 清理进度监听器
+- **后端处理**:
+  - 设置 `is_cancelling = true` 标志
+  - 任务在执行轮询点检查标志并响应
+  - 发送 `task_cancelled` WebSocket 消息
 
 ---
 
@@ -730,6 +1225,62 @@ const registerProgressListeners = useCallback(async () => {
 [React] ResultPanel 显示全部 3 个结果，顶部显示"完成 100%"
 ```
 
+### 任务取消流程日志
+
+```
+[Tauri] 用户点击"取消任务"按钮
+[Tauri] 获取当前 taskId: a1b2c3d4-...
+[Tauri] 调用 cancelDetection(taskId, apiKey)
+[Rust] 发送 DELETE /infer/task/a1b2c3d4-...
+[Rust] 请求头：X-API-Key: sk_xxx
+[Backend] 收到 DELETE /infer/task/a1b2c3d4-...
+[Backend] 验证认证：通过
+[Backend] 获取任务状态：status="running"
+[Backend] 设置取消标志：is_cancelling=true
+[Backend] 返回：{"task_id": "a1b2c3d4-...", "message": "任务已取消"}
+[Rust] 收到取消响应，转发给前端
+[Tauri] 收到取消成功响应
+[Tauri] 设置 error="检测任务已取消"
+[Tauri] 设置 status="idle"
+[Tauri] 清理进度监听器
+[React] 显示"检测任务已取消"提示
+[Backend] 后台任务检查到取消标志
+[Backend] 发送 task_cancelled 消息
+[Rust] 收到 task_cancelled，转发为 ws_task_completed (status="cancelled")
+[Tauri] 收到 ws_task_completed，status="cancelled"
+[Tauri] 确认状态已重置，忽略
+```
+
+### 历史记录查询日志
+
+```
+[React] HistoryPage 组件挂载
+[React] 调用 loadData()
+[Tauri] 调用 queryHistory({ page: 1, pageSize: 20, mode: "single" })
+[Tauri] 从 localStorage 获取 apiKey: sk_xxx
+[Rust] query_history 被调用，params: { page: "1", page_size: "20", mode: "single" }
+[Rust] api_key 长度：32
+[Rust] 发送 GET /history?page=1&page_size=20&mode=single
+[Rust] 请求头：X-API-Key: sk_xxx
+[Backend] 收到 GET /history
+[Backend] 验证认证：通过 (api_key)
+[Backend] auth.user_id: "api_key:activated_ACT_xxxxxx"
+[Backend] api_key_hash: "activated_ACT_xxxxxx"
+[Backend] 查询数据库：SELECT * FROM tasks WHERE api_key_hash = ? AND mode = ?
+[Backend] 返回结果：total=25, items=[...]
+[Rust] 收到响应，转发给前端
+[Tauri] 收到历史记录：total=25, items 长度=20
+[React] 更新历史列表状态
+[React] 渲染 HistoryTable 和 HistoryStatsPanel
+```
+
 ---
 
 **文档结束**
+
+## 修订历史
+
+| 版本 | 日期 | 修订内容 |
+|------|------|----------|
+| 2.1 | 2026-03-04 | 添加任务取消流程、历史记录 API 详解、task_cancelled 消息类型 |
+| 2.0 | 2026-02-27 | 初始版本，包含 HTTP API、WebSocket 通信、异步任务流程 |

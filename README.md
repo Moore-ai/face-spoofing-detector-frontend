@@ -8,6 +8,19 @@
 
 基于 Tauri + React + TypeScript 开发的人脸活体检测桌面应用前端。支持单模态（RGB/IR）和融合模式（RGB+IR）检测，具有 VS Code 风格的深色主题界面。
 
+> **后端仓库**: [github.com/Moore-ai/face-spoofing-detector-backend](https://github.com/Moore-ai/face-spoofing-detector-backend)
+
+## 📸 预览
+
+### 检测页面
+![检测页面](images/检测页面.png)
+
+### 历史记录页面
+![历史记录页面](images/历史记录页面.png)
+
+### 推理历史
+![推理历史](images/推理历史.png)
+
 ## ✨ 功能特性
 
 - 🔬 **双模式检测**：支持单模态（RGB/IR）和融合模式（RGB+IR）
@@ -23,6 +36,7 @@
 - 🔒 **文件验证**：自动检测文件格式和有效性
 - 🔑 **激活码认证**：支持激活码换取 API Key 进行认证
 - 📜 **历史记录**：支持查询服务器端历史记录，可按模式、状态、时间范围过滤，支持分页浏览和任务详情查看
+- 🛑 **任务取消**：检测过程中可随时取消正在执行的任务，取消后保留已处理的结果
 
 ## 🛠️ 技术栈
 
@@ -224,8 +238,9 @@ cd src-tauri && cargo fmt
 | `POST /auth/activate` | 激活码验证 | 换取 API Key |
 | `POST /infer/single` | 单模态检测 | 接收 base64 图片列表 |
 | `POST /infer/fusion` | 融合模式检测 | 接收 RGB/IR 图片对 |
-| `WS /infer/ws` | WebSocket 连接 | 接收任务进度和完成通知 |
+| `DELETE /infer/task/{task_id}` | 取消任务 | 取消正在执行的任务 |
 | `GET /infer/task/{task_id}` | 任务状态查询 | 查询任务状态和结果 |
+| `WS /infer/ws` | WebSocket 连接 | 接收任务进度和完成通知 |
 | `GET /history` | 历史记录查询 | 查询历史任务记录（支持分页和过滤：client_id/mode/status/days） |
 | `GET /history/stats` | 历史统计 | 获取检测任务的统计信息（支持 mode/status/days 过滤） |
 | `DELETE /history` | 删除历史记录 | 删除指定的历史任务记录（API Key 认证即可） |
@@ -244,6 +259,7 @@ API_BASE_URL=http://localhost:8000
 | `task_completed` | 任务全部完成（所有图片成功） |
 | `task_partial_failure` | 任务部分失败（部分图片失败） |
 | `task_failed` | 任务完全失败 |
+| `task_cancelled` | 任务被用户取消 |
 
 **错误响应格式：**
 ```json
@@ -309,6 +325,17 @@ API_BASE_URL=http://localhost:8000
 | 错误次数 | 推理错误的总次数 |
 | 成功率 | `(total_real + total_fake) / (total_real + total_fake + total_errors) × 100%` |
 | 平均耗时 | 所有任务的平均处理时间 |
+
+### 任务取消
+
+在检测过程中可以随时取消正在执行的任务：
+- **取消方式**：点击侧边栏红色的"取消任务"按钮
+- **取消时机**：仅在任务进行中（`status === "detecting"` 或 `status === "connecting"`）且存在有效 `taskId` 时显示
+- **取消后行为**：
+  - 保留已处理的检测结果
+  - 状态重置为 `idle`
+  - 显示"检测任务已取消"提示信息
+- **实现原理**：通过 `DELETE /infer/task/{task_id}` 端点发送取消请求，后端设置取消标志，任务在执行过程中检查并响应取消请求
 
 ## 🤝 贡献指南
 
