@@ -18,13 +18,13 @@ import {
 import "../../css/App.css";
 
 interface HistoryPageProps {
-  clientId: string | null;
+  clientId?: string | null;
 }
 
 /**
  * 历史记录页面组件（纯服务器数据源）
  */
-export function HistoryPage({ clientId }: HistoryPageProps): React.ReactElement {
+export function HistoryPage({}: HistoryPageProps): React.ReactElement {
   // 过滤条件
   const [filters, setFilters] = useState<FilterState>({
     mode: "",
@@ -61,19 +61,20 @@ export function HistoryPage({ clientId }: HistoryPageProps): React.ReactElement 
         pageSize,
       };
 
-      if (clientId) params.clientId = clientId;
+      // 注意：不传入 clientId，因为后端已经通过 api_key_hash 来过滤用户数据
+      // 传入 clientId 可能导致在 WebSocket 重连后查询不到新数据
       if (filters.mode) params.mode = filters.mode;
       if (filters.status) params.status = filters.status;
       if (filters.days) params.days = parseInt(filters.days, 10);
 
       const statsParams = {
-        ...(clientId ? { clientId } : {}),
+        // 不传入 clientId，理由同上
         ...(filters.mode ? { mode: filters.mode } : {}),
         ...(filters.status ? { status: filters.status } : {}),
         ...(filters.days ? { days: parseInt(filters.days, 10) } : {}),
       };
 
-      console.log("[HistoryPage] 开始加载数据，params:", params, "clientId:", clientId);
+      console.log("[HistoryPage] 开始加载数据，params:", params);
       const [historyRes, statsRes] = await Promise.all([
         queryHistory(params),
         getHistoryStats(Object.keys(statsParams).length > 0 ? statsParams : undefined),
@@ -91,7 +92,7 @@ export function HistoryPage({ clientId }: HistoryPageProps): React.ReactElement 
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, filters, clientId]);
+  }, [page, pageSize, filters]);
 
   // 初始加载和过滤条件变化时重新加载
   useEffect(() => {
@@ -128,10 +129,10 @@ export function HistoryPage({ clientId }: HistoryPageProps): React.ReactElement 
 
     try {
       // 从服务器获取任务详情（包含 results）
+      // 不传入 clientId，后端会通过 api_key_hash 自动过滤
       const response = await queryHistory({
         page: 1,
         pageSize: 100,
-        ...(clientId ? { clientId } : {}),
       });
       const found = response.items.find((item) => item.taskId === task.taskId);
 
