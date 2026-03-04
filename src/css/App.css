@@ -496,6 +496,23 @@ body,
   background: var(--vscode-blue-light);
 }
 
+.btn-danger {
+  background: #c72e2e;
+  color: #ffffff;
+  border: 1px solid #ff4444;
+  box-shadow: 0 0 12px rgba(255, 68, 68, 0.4);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #ff3333;
+  border-color: #ff6666;
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.7);
+  transform: translateY(-1px);
+}
+
 .btn-secondary {
   background: var(--vscode-card-bg);
   color: var(--vscode-text-secondary);

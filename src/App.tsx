@@ -31,6 +31,7 @@ function App(): React.ReactElement {
     error,
     userState,
     startDetection,
+    cancel,
     reset,
   } = useDetection();
 
@@ -105,6 +106,16 @@ function App(): React.ReactElement {
                       ? `检测中 ${userState.progress}%`
                       : "开始检测"}
                 </button>
+
+                {isInteractionDisabled && userState.taskId && (
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={cancel}
+                  >
+                    取消任务
+                  </button>
+                )}
 
                 <button
                   type="button"

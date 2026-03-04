@@ -16,6 +16,7 @@ import {
   listenWsTaskFailed,
   listenWsConnected,
   AsyncTaskResponse,
+  cancelDetection,
 } from "../api/tauri";
 
 interface UseDetectionReturn {
@@ -29,6 +30,7 @@ interface UseDetectionReturn {
   error: string | null;
   userState: UserState;
   startDetection: () => Promise<void>;
+  cancel: () => Promise<void>;
   reset: () => void;
 }
 
@@ -211,14 +213,24 @@ export function useDetection(): UseDetectionReturn {
     const unlistenCompleted = await listenWsTaskCompleted((wsMsg) => {
       if (!mounted) return;
       console.log("[useDetection] 收到任务完成事件:", wsMsg);
-      console.log("[useDetection] 设置 status = success, taskId = null");
+
       // 标记任务已完成，防止竞态条件
       isTaskCompletedRef.current = true;
-      setStatus("success");
+
+      // 检查是否是取消状态
+      if (wsMsg.status === "cancelled") {
+        console.log("[useDetection] 任务已取消，设置 status = idle");
+        setError("检测任务已取消");
+        setStatus("idle");
+      } else {
+        console.log("[useDetection] 任务完成，设置 status = success");
+        setStatus("success");
+      }
+
       setUserState((prev) => ({
         ...prev,
         taskId: null,
-        progress: 100,
+        progress: wsMsg.status === "cancelled" ? prev.progress : 100,
         isConnected: true,
       }));
     });
@@ -453,6 +465,33 @@ export function useDetection(): UseDetectionReturn {
     }
   }, [mode, images]);
 
+  const cancel = useCallback(async () => {
+    console.log("[useDetection] 执行 cancel()");
+    const apiKey = localStorage.getItem("api_key") || "";
+    // 获取当前正在执行的任务 ID
+    const taskId = userState.taskId;
+
+    if (!taskId) {
+      console.error("[useDetection] 取消任务失败：taskId 为空");
+      return;
+    }
+
+    try {
+      await cancelDetection(taskId, apiKey);
+      setError("检测任务已取消");
+      setStatus("idle");
+      // 清理进度监听器
+      cleanupProgressListeners();
+      // 重置任务相关状态，但保留已处理的结果
+      setUserState((prev) => ({
+        ...prev,
+        taskId: null,
+      }));
+    } catch (err) {
+      console.error("取消任务失败:", err);
+    }
+  }, [cleanupProgressListeners, userState.taskId]);
+
   const reset = useCallback(() => {
     console.log("[useDetection] 执行 reset()");
     // 每次重置时清理进度监听器
@@ -480,6 +519,7 @@ export function useDetection(): UseDetectionReturn {
     error,
     userState,
     startDetection,
+    cancel,
     reset,
   };
 }

@@ -128,6 +128,13 @@ export async function detectFusionModeAsync(
   });
 }
 
+export async function cancelDetection(taskId: string, apiKey: string): Promise<AsyncTaskResponse> {
+  if (!isTauri()) {
+    return { task_id: taskId, message: "任务已取消（模拟）" };
+  }
+  return await invoke<AsyncTaskResponse>("cancel_detection", { taskId, apiKey });
+}
+
 // ===== WebSocket 事件监听 =====
 
 export type ProgressCallback = (event: WsEventMessage) => void;

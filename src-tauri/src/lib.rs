@@ -6,6 +6,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use util::{
     activate_license,
+    cancel_detection,
     connect_websocket,
     delete_history,
     detect_fusion_mode_async,
@@ -68,6 +69,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             detect_single_mode_async,
             detect_fusion_mode_async,
+            cancel_detection,
             get_supported_formats,
             validate_image,
             connect_websocket,

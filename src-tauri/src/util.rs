@@ -233,6 +233,37 @@ pub async fn connect_websocket(
     Ok("pending".to_string())
 }
 
+/// 取消当前检测任务
+#[tauri::command]
+pub async fn cancel_detection(
+    task_id: String,
+    api_key: String,
+    http_client: State<'_, Client>,
+) -> Result<AsyncTaskResponse, String> {
+    let api_url = format!("{}/infer/task/{}", get_api_base_url(), task_id);
+
+    log::info!("发送取消任务请求，task_id: {}", task_id);
+
+    let response = http_client
+        .delete(&api_url)
+        .header("X-API-Key", &api_key)
+        .send()
+        .await
+        .map_err(|e| format!("网络请求失败：{}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(format!("取消任务失败 ({}): {}", status, error_text));
+    }
+
+    let res_text = response.text().await.map_err(|e| format!("解析响应失败：{}", e))?;
+    let task_response: AsyncTaskResponse = serde_json::from_str(&res_text)
+        .map_err(|e| format!("解析响应失败：{}", e))?;
+
+    Ok(task_response)
+}
+
 /// 处理收到的 WebSocket 消息并转发给前端
 fn handle_ws_message(app: &AppHandle, text: &str) -> Result<(), String> {
     let value: serde_json::Value = serde_json::from_str(text)
@@ -283,6 +314,22 @@ fn handle_ws_message(app: &AppHandle, text: &str) -> Result<(), String> {
             };
             let _ = app.emit("ws_task_failed", &event);
             log::error!("任务失败：{}", event.task_id);
+        }
+        "task_cancelled" => {
+            // 任务被取消
+            let data = value.get("data").ok_or("缺少 data 字段")?;
+            let event = WsEventMessage {
+                event_type: "task_completed".to_string(),
+                task_id: data.get("task_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                status: Some("cancelled".to_string()),
+                message: data.get("message").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                result: None,
+                total_items: data.get("total_items").and_then(|v| v.as_u64()).map(|v| v as u32),
+                processed_items: data.get("processed_items").and_then(|v| v.as_u64()).map(|v| v as u32),
+                completed_results: None,
+            };
+            let _ = app.emit("ws_task_completed", &event);
+            log::info!("任务已取消：{}", event.task_id);
         }
         "progress_update" | "progress" => {
             log::info!("收到进度更新消息：{}", text);
@@ -826,6 +873,7 @@ pub async fn query_history(
     http_client: State<'_, Client>,
 ) -> Result<HistoryQueryResponse, String> {
     log::info!("query_history 被调用，params: {:?}, api_key 长度：{}", params, api_key.len());
+    log::info!("query_history api_key 前缀：{}", &api_key[..20.min(api_key.len())]);
 
     let mut api_url = format!("{}/history", get_api_base_url());
 
