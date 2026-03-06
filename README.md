@@ -45,6 +45,7 @@
 - **构建工具**：Vite 7
 - **桌面框架**：Tauri v2
 - **样式方案**：Tailwind CSS 4 + 自定义 CSS 变量
+- **状态管理**：Zustand + 自定义 Hook
 - **后端**：Rust
 - **配置管理**：YAML + dotenv
 
@@ -60,19 +61,23 @@
 │   └── setup-env-windows.bat     # 批处理脚本（Windows）
 ├── src/                          # 前端源代码
 │   ├── api/                      # Tauri API 封装
-│   │   ├── tauri.ts
-│   │   └── commands.d.ts
+│   │   ├── tauri.ts           # Tauri 命令调用封装（含 WebSocket 事件监听）
+│   │   └── commands.d.ts      # 命令类型定义
 │   ├── components/               # React 组件
 │   │   ├── layout/               # 布局组件
 │   │   ├── ui/                   # 通用 UI 组件
 │   │   └── detection/            # 检测相关组件
 │   ├── hooks/                    # 自定义 Hooks
-│   │   └── useDetection.ts
+│   │   └── useDetection.ts       # 封装 Zustand store 的状态管理 Hook
 │   ├── types/                    # 类型定义
 │   │   └── index.ts
 │   ├── utils/                    # 工具函数
 │   │   ├── imageUtils.ts
 │   │   └── stats.ts
+│   ├── store/                    # Zustand Store
+│   │   ├── index.ts              # Store 统一导出
+│   │   ├── detectionStore.ts     # 检测状态 Store（核心）
+│   │   └── websocketManager.ts   # WebSocket 事件管理器
 │   ├── App.tsx
 │   └── main.tsx
 ├── docs/                         # 项目文档
