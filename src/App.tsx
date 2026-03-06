@@ -7,52 +7,37 @@ import { ResultPanel } from "./components/detection/ResultPanel";
 import { ActivationPage } from "./components/activation/ActivationPage";
 import { HistoryPage } from "./components/history/HistoryPage";
 import { useDetection } from "./hooks/useDetection";
+import { registerConnectionListener } from "./store/websocketManager";
 import "./css/App.css";
 
 function App(): React.ReactElement {
   // 启动时检查 localStorage 中是否存在 API Key
   const [isActivated, setIsActivated] = useState(() => {
-    // 只在客户端运行时检查 localStorage
     if (typeof window !== "undefined") {
       const apiKey = localStorage.getItem("api_key");
       return !!apiKey;
     }
     return false;
   });
+
   const [activeTab, setActiveTab] = useState<NavItemId | null>("work");
 
-  const {
-    mode,
-    setMode,
-    images,
-    addImages,
-    removeImage,
-    status,
-    error,
-    userState,
-    startDetection,
-    cancel,
-    reset,
+  // 使用检测 Hook
+  const { 
+    mode, images, status, error, clientId, taskId, progress, completedResults,
+    setMode, addImages, removeImage, startDetection, cancelDetection, reset,
   } = useDetection();
 
+  // 计算值
   const isDetecting = status === "detecting" || status === "connecting";
   const hasImages = images.length > 0;
-  const hasResults = userState.completedResults.length > 0;
+  const hasResults = completedResults.length > 0;
+  const isInteractionDisabled = isDetecting || taskId !== null;
 
-  // 检测进行中时禁用用户交互（防止重复提交）
-  const isInteractionDisabled = isDetecting || userState.taskId !== null;
-
-  // 调试日志
+  // 应用挂载时注册 WebSocket 连接监听器（只调用一次）
   useEffect(() => {
-    console.log("[App] 状态变化:", {
-      status,
-      isDetecting,
-      taskId: userState.taskId,
-      isInteractionDisabled,
-      hasImages,
-      hasResults,
-    });
-  }, [status, isDetecting, userState.taskId, isInteractionDisabled, hasImages, hasResults]);
+    registerConnectionListener();
+  }, []);
 
   // 如果未激活，显示激活页面
   if (!isActivated) {
@@ -103,15 +88,15 @@ function App(): React.ReactElement {
                   {status === "connecting"
                     ? "连接中..."
                     : status === "detecting"
-                      ? `检测中 ${userState.progress}%`
+                      ? `检测中 ${progress}%`
                       : "开始检测"}
                 </button>
 
-                {isInteractionDisabled && userState.taskId && (
+                {isInteractionDisabled && taskId && (
                   <button
                     type="button"
                     className="btn btn-danger"
-                    onClick={cancel}
+                    onClick={cancelDetection}
                   >
                     取消任务
                   </button>
@@ -136,10 +121,16 @@ function App(): React.ReactElement {
             <ResultPanel
               images={images}
               status={status}
-              userState={userState}
+              userState={{
+                clientId,
+                taskId,
+                isConnected: status !== "idle",
+                progress,
+                completedResults,
+              }}
             />
           ) : activeTab === "history" ? (
-            <HistoryPage clientId={userState.clientId} />
+            <HistoryPage clientId={clientId} />
           ) : null}
         </main>
       </div>
