@@ -37,6 +37,8 @@
 - 🔑 **激活码认证**：支持激活码换取 API Key 进行认证
 - 📜 **历史记录**：支持查询服务器端历史记录，可按模式、状态、时间范围过滤，支持分页浏览和任务详情查看
 - 🛑 **任务取消**：检测过程中可随时取消正在执行的任务，取消后保留已处理的结果
+- ⚙️ **设置页面**：支持快捷键绑定、历史记录保留期限设置、本地数据管理等功能
+- ⌨️ **全局快捷键**：支持自定义快捷键触发检测、取消任务、清空重置操作，配置持久化保存
 
 ## 🛠️ 技术栈
 
@@ -58,7 +60,9 @@
 ├── scripts/                      # 环境配置脚本
 │   ├── setup-env.js              # 跨平台 Node.js 配置脚本
 │   ├── setup-env.sh              # Shell 脚本（macOS/Linux）
-│   └── setup-env-windows.bat     # 批处理脚本（Windows）
+│   ├── setup-env-windows.bat     # 批处理脚本（Windows）
+│   ├── kill_port.sh              # 跨平台端口清理脚本（Unix Shell）
+│   └── kill_port.bat             # 端口清理脚本（Windows）
 ├── src/                          # 前端源代码
 │   ├── api/                      # Tauri API 封装
 │   │   ├── tauri.ts           # Tauri 命令调用封装（含 WebSocket 事件监听）
@@ -66,9 +70,15 @@
 │   ├── components/               # React 组件
 │   │   ├── layout/               # 布局组件
 │   │   ├── ui/                   # 通用 UI 组件
-│   │   └── detection/            # 检测相关组件
+│   │   ├── detection/            # 检测相关组件
+│   │   ├── history/              # 历史记录组件
+│   │   └── settings/             # 设置页面组件
+│   │       ├── SettingsPage.tsx      # 设置页面主组件
+│   │       ├── ShortcutsSettings.tsx # 快捷键设置组件
+│   │       └── index.ts              # 组件统一导出
 │   ├── hooks/                    # 自定义 Hooks
-│   │   └── useDetection.ts       # 封装 Zustand store 的状态管理 Hook
+│   │   ├── useDetection.ts       # 封装 Zustand store 的状态管理 Hook
+│   │   └── useGlobalShortcuts.ts # 全局快捷键监听 Hook
 │   ├── types/                    # 类型定义
 │   │   └── index.ts
 │   ├── utils/                    # 工具函数
@@ -77,16 +87,25 @@
 │   ├── store/                    # Zustand Store
 │   │   ├── index.ts              # Store 统一导出
 │   │   ├── detectionStore.ts     # 检测状态 Store（核心）
-│   │   └── websocketManager.ts   # WebSocket 事件管理器
+│   │   ├── websocketManager.ts   # WebSocket 事件管理器
+│   │   └── shortcutStore.ts      # 快捷键配置 Store
 │   ├── App.tsx
 │   └── main.tsx
 ├── docs/                         # 项目文档
 │   └── client-server-communication.md  # 客户端 - 服务器通信详解
 ├── src-tauri/                    # Rust 后端代码
 │   ├── src/
+│   │   ├── main.rs          # 应用入口
+│   │   ├── lib.rs           # Tauri 命令注册
+│   │   ├── util.rs          # 检测命令实现 + WebSocket 连接管理
+│   │   ├── config.rs        # 配置管理
+│   │   └── shortcuts.rs     # 快捷键配置管理
 │   ├── capabilities/
+│   │   └── default.json     # 权限配置（包含窗口控制权限）
 │   ├── config/
-│   └── tauri.conf.json
+│   │   ├── config.yaml      # 应用配置
+│   │   └── shortcuts.json   # 快捷键配置（运行时生成）
+│   └── tauri.conf.json      # Tauri 应用配置（包含装饰设置）
 └── package.json
 ```
 
@@ -226,6 +245,10 @@ cd src-tauri && cargo check
 
 # Rust 代码格式化
 cd src-tauri && cargo fmt
+
+# 端口清理（当端口被占用时）
+./kill_port.sh 1420      # macOS/Linux
+./kill_port.bat 1420     # Windows
 ```
 
 ### 代码规范
@@ -341,6 +364,43 @@ API_BASE_URL=http://localhost:8000
   - 状态重置为 `idle`
   - 显示"检测任务已取消"提示信息
 - **实现原理**：通过 `DELETE /infer/task/{task_id}` 端点发送取消请求，后端设置取消标志，任务在执行过程中检查并响应取消请求
+
+### 设置页面
+
+应用提供完整的设置页面（点击活动栏齿轮图标访问），包含以下功能：
+
+#### 账户信息
+- 显示激活状态
+- 注销产品功能（带确认对话框）
+
+#### 使用偏好
+- **默认检测模式**：设置启动时默认使用的检测模式（单模态/融合模式）
+- **历史记录保留期限**：设置本地历史记录的保存天数（7 天/30 天/90 天）
+
+#### 快捷键绑定
+- **开始检测**：默认 `Ctrl+Enter`
+- **取消任务**：默认 `Escape`
+- **清空重置**：默认 `Ctrl+R`
+- 支持自定义快捷键，格式：`修饰键 + 主键`（如 `Ctrl+Shift+S`）
+- 特殊键支持：`Escape`、`Enter`、`Tab`、`Delete`、`Backspace` 可单独使用
+- 配置保存到 `src-tauri/config/shortcuts.json`，应用启动时自动加载
+- 快捷键仅在"工作"页面生效，避免与其他页面冲突
+
+#### 数据与隐私
+- 清除缓存
+- 导出数据
+
+### 全局快捷键
+
+全局快捷键功能通过 `useGlobalShortcuts` Hook 实现：
+
+- **作用域控制**：快捷键仅在"工作"标签页激活时响应
+- **输入保护**：当焦点在输入框时，快捷键被忽略
+- **配置持久化**：快捷键配置保存在 `src-tauri/config/shortcuts.json`
+- **验证逻辑**：
+  - 快捷键必须包含至少一个修饰键（Ctrl/Alt/Shift/Meta）
+  - 特殊键（Escape/Enter 等）可单独使用
+  - 不允许快捷键冲突
 
 ## 🤝 贡献指南
 
