@@ -308,7 +308,27 @@ API_BASE_URL=http://localhost:8000
 
 - 激活码格式：`ACT-XXXXXXXX-XXXXXXXX`（19 字符）
 - 激活码为单次使用，使用后需要重新生成
-- 激活成功后 API Key 存储在 localStorage 中
+- 激活成功后 API Key 存储在**系统密钥环**中（Windows Credential Manager / macOS Keychain / Linux Secret Service）
+
+### API Key 安全存储
+
+系统使用 [keyring](https://docs.rs/keyring) crate 将 API Key 安全存储在操作系统提供的加密存储中：
+
+| 操作系统 | 存储位置 |
+|----------|----------|
+| Windows | Windows Credential Manager |
+| macOS | macOS Keychain |
+| Linux | GNOME Keyring / KWallet |
+
+**优势**：
+- 用户无法通过 DevTools 直接查看
+- 防止 XSS 攻击窃取 API Key
+- 使用操作系统级加密保护
+
+**技术实现**：
+- Rust 后端：`store_api_key`、`retrieve_api_key`、`delete_api_key` 命令
+- 前端 API：`storeApiKey()`、`retrieveApiKey()`、`deleteApiKey()`
+- 开发模式（浏览器）下降级使用 localStorage
 
 ### 竞态条件处理
 
