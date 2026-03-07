@@ -142,10 +142,13 @@ export async function registerConnectionListener(): Promise<void> {
     // 更新 store 中的 clientId
     detectionStore.getState().setClientId(clientId);
 
-    // resolve Promise
+    // 如果有等待的 resolve 函数，立即 resolve
     if (clientIdResolve) {
+      console.log('[WebSocket] 发现等待的 clientIdResolve，立即 resolve');
       clientIdResolve(clientId);
       clientIdResolve = null;
+    } else {
+      console.log('[WebSocket] clientIdResolve 为空， clientId 已存储到 store 中');
     }
   });
 
@@ -167,8 +170,24 @@ export function cleanupAllListeners(): void {
  * 等待 clientId（用于首次连接）
  */
 export function waitForClientId(): Promise<string> {
+  console.log('[WebSocket] waitForClientId 被调用，等待 ws_connected 事件...');
+
+  // 先检查 store 中是否已经有 clientId 了（避免竞态条件）
+  const existingClientId = detectionStore.getState().clientId;
+  if (existingClientId) {
+    console.log('[WebSocket] store 中已有 clientId:', existingClientId, '直接返回');
+    return Promise.resolve(existingClientId);
+  }
+
   return new Promise((resolve) => {
     clientIdResolve = resolve;
+    // 添加超时保护，避免无限等待
+    setTimeout(() => {
+      if (clientIdResolve) {
+        console.error('[WebSocket] 等待 clientId 超时（10 秒），请检查后端服务是否正常运行');
+        resolve('timeout_error'); // 解决 Promise 避免永久卡住
+      }
+    }, 10000);
   });
 }
 

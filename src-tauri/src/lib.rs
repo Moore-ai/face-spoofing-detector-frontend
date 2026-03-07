@@ -1,9 +1,12 @@
 mod config;
+mod shortcuts;
 mod util;
 
 use config::{load_config, ConfigState};
+use shortcuts::{get_shortcuts_config, save_shortcuts_config_command};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tauri::Manager;
 use util::{
     activate_license,
     cancel_detection,
@@ -35,9 +38,6 @@ pub fn run() {
         app_config.image.supported_formats
     );
 
-    // 初始化 WebSocket 连接状态
-    let ws_state: WsConnectionStateRef = Arc::new(Mutex::new(util::WsConnectionState::new()));
-
     // 从环境变量读取 HTTP 客户端超时配置（单位：秒）
     let request_timeout_secs = std::env::var("HTTP_REQUEST_TIMEOUT")
         .ok()
@@ -61,11 +61,24 @@ pub fn run() {
         .build()
         .expect("Failed to create HTTP client");
 
+    // 初始化 WebSocket 连接状态
+    let ws_state: WsConnectionStateRef = Arc::new(Mutex::new(util::WsConnectionState::new()));
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(http_client)
         .manage(ConfigState(Arc::new(app_config)))
         .manage(ws_state)
+        .setup(|app| {
+            // 初始化快捷键配置
+            let default_config = shortcuts::ShortcutConfig::default();
+            let config = shortcuts::load_shortcuts_config().unwrap_or_else(|e| {
+                log::warn!("加载快捷键配置失败：{}，使用默认配置", e);
+                default_config.clone()
+            });
+            app.manage(shortcuts::ShortcutConfigState::new(config));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             detect_single_mode_async,
             detect_fusion_mode_async,
@@ -78,6 +91,8 @@ pub fn run() {
             query_history,
             get_history_stats,
             delete_history,
+            get_shortcuts_config,
+            save_shortcuts_config_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

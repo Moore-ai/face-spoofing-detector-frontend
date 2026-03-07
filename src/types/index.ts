@@ -59,12 +59,12 @@ export interface BatchDetectionResult {
   averageConfidence: number;
 }
 
-// 组件通用Props
+// 组件通用 Props
 export interface BaseProps {
   className?: string;
 }
 
-// 用户WebSocket状态
+// 用户 WebSocket 状态
 export interface UserState {
   clientId: string | null;
   taskId: string | null;
@@ -73,7 +73,7 @@ export interface UserState {
   completedResults: DetectionResultItem[];
 }
 
-// WebSocket进度消息
+// WebSocket 进度消息
 export interface WsProgressMessage {
   type: "progress" | "task_completed" | "task_failed";
   data: {
@@ -90,4 +90,37 @@ export interface WsProgressMessage {
     total_items?: number;
     processed_items?: number;
   };
+}
+
+// ===== 快捷键相关类型 =====
+
+/**
+ * 快捷键动作类型
+ */
+export type ShortcutActionId = "start_detection" | "cancel_task" | "reset";
+
+/**
+ * 快捷键配置接口
+ */
+export interface ShortcutConfig {
+  start_detection: string;  // 开始检测
+  cancel_task: string;      // 取消任务
+  reset: string;            // 清空重置
+}
+
+/**
+ * 快捷键录入项
+ */
+export interface ShortcutBinding {
+  actionId: ShortcutActionId;
+  label: string;
+  shortcut: string;
+}
+
+/**
+ * 快捷键验证结果
+ */
+export interface ShortcutValidationResult {
+  valid: boolean;
+  error?: string;
 }

@@ -54,6 +54,7 @@ pub struct AsyncTaskResponse {
 pub struct WsConnectedMessage {
     #[serde(rename = "type")]
     pub msg_type: String,
+    #[serde(rename = "client_id")]
     pub client_id: String,
 }
 
@@ -102,6 +103,8 @@ pub async fn connect_websocket(
     ws_state: State<'_, WsConnectionStateRef>,
     api_key: String,
 ) -> Result<String, String> {
+    log::info!("connect_websocket 被调用，api_key: {}...", &api_key[..std::cmp::min(8, api_key.len())]);
+
     // 先断开旧连接（如果有）
     {
         let mut state = ws_state.lock().await;
@@ -123,7 +126,7 @@ pub async fn connect_websocket(
         .await
         .map_err(|e| format!("WebSocket 连接失败：{}", e))?;
 
-    log::info!("WebSocket 连接已建立，等待 client_id...");
+    log::info!("WebSocket 连接已建立到 {}", &ws_url[..std::cmp::min(50, ws_url.len())]);
 
     // 更新连接状态
     {
@@ -142,21 +145,27 @@ pub async fn connect_websocket(
         let client_id: Option<String>;
 
         // 等待接收 client_id
+        log::info!("等待 Python 后端发送 client_id...");
         match read.next().await {
             Some(Ok(WsMessage::Text(text))) => {
+                log::info!("收到 WebSocket 文本消息：{}", &text[..std::cmp::min(text.len(), 200)]);
                 let msg: WsConnectedMessage = match serde_json::from_str(&text) {
                     Ok(m) => m,
                     Err(e) => {
                         log::error!("解析连接消息失败：{}", e);
+                        log::error!("原始消息：{}", text);
                         return;
                     }
                 };
+                log::info!("解析消息：msg_type={}, client_id={}", msg.msg_type, msg.client_id);
                 if msg.msg_type == "connected" {
                     client_id = Some(msg.client_id.clone());
                     log::info!("WebSocket 已连接，client_id: {}", msg.client_id);
+                    log::info!("发送 ws_connected 事件到前端：{}", msg.client_id);
                     let _ = app_clone.emit("ws_connected", &msg.client_id);
+                    log::info!("ws_connected 事件发送完成");
                 } else {
-                    log::error!("未收到正确的连接确认消息");
+                    log::error!("未收到正确的连接确认消息，msg_type: {}", msg.msg_type);
                     return;
                 }
             }
@@ -575,7 +584,7 @@ pub async fn activate_license(
     // 记录详细日志用于调试
     log::info!("发送激活码验证请求到：{}", api_url);
     log::info!("激活码：{}... (长度：{}, 字节：{:?})",
-               &code[..8.min(code.len())],
+               &code[..std::cmp::min(8, code.len())],
                code.len(),
                code.as_bytes());
 
@@ -873,7 +882,7 @@ pub async fn query_history(
     http_client: State<'_, Client>,
 ) -> Result<HistoryQueryResponse, String> {
     log::info!("query_history 被调用，params: {:?}, api_key 长度：{}", params, api_key.len());
-    log::info!("query_history api_key 前缀：{}", &api_key[..20.min(api_key.len())]);
+    log::info!("query_history api_key 前缀：{}", &api_key[..std::cmp::min(20, api_key.len())]);
 
     let mut api_url = format!("{}/history", get_api_base_url());
 

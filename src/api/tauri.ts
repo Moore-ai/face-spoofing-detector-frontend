@@ -396,3 +396,45 @@ export async function deleteHistory(params: HistoryDeleteParams): Promise<Histor
     apiKey,
   });
 }
+
+// ===== 快捷键配置 API =====
+
+export interface ShortcutConfig {
+  start_detection: string;
+  cancel_task: string;
+  reset: string;
+}
+
+/**
+ * 获取快捷键配置
+ */
+export async function getShortcutsConfig(): Promise<ShortcutConfig> {
+  if (!isTauri()) {
+    // 开发模式：返回默认配置
+    return {
+      start_detection: "Ctrl+Enter",
+      cancel_task: "Escape",
+      reset: "Ctrl+R",
+    };
+  }
+  return await invoke<ShortcutConfig>("get_shortcuts_config");
+}
+
+/**
+ * 保存快捷键配置
+ */
+export async function saveShortcutsConfig(config: ShortcutConfig): Promise<void> {
+  console.log("[Shortcut API] saveShortcutsConfig 调用，isTauri:", isTauri(), config);
+  if (!isTauri()) {
+    console.log("[Shortcut API] 开发模式，模拟保存", config);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return;
+  }
+  try {
+    await invoke<void>("save_shortcuts_config_command", { config });
+    console.log("[Shortcut API] 保存成功");
+  } catch (err) {
+    console.error("[Shortcut API] 保存失败:", err);
+    throw err;
+  }
+}

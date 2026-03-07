@@ -208,9 +208,13 @@ const createTaskSlice = (
     const state = get();
     const { images, mode, clientId } = state;
 
+    console.log('[detectionStore] startDetection 被调用');
+    console.log('[detectionStore] 当前状态：images=', images.length, 'mode=', mode, 'clientId=', clientId);
+
     // 验证图片
     if (images.length === 0) {
       set({ error: '请先上传图片' });
+      console.log('[detectionStore] 错误：没有图片');
       return;
     }
 
@@ -229,6 +233,7 @@ const createTaskSlice = (
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : '验证失败';
       set({ error: errorMsg, status: 'error' });
+      console.log('[detectionStore] 图片验证失败:', errorMsg);
       return;
     }
 
@@ -242,17 +247,35 @@ const createTaskSlice = (
     let currentClientId = clientId;
     const apiKey = localStorage.getItem('api_key') || '';
 
+    console.log('[detectionStore] apiKey:', apiKey ? '存在' : '空');
+
     if (!currentClientId) {
       console.log('[detectionStore] 连接 WebSocket...');
       try {
-        await connectWebsocket(apiKey);
+        const connectPromise = connectWebsocket(apiKey);
+        console.log('[detectionStore] connectWebsocket 调用开始');
+        const result = await connectPromise;
+        console.log('[detectionStore] connectWebsocket 返回:', result);
         currentClientId = await waitForClientId();
         console.log('[detectionStore] 获取到 clientId:', currentClientId);
+
+        // 检查超时错误
+        if (currentClientId === 'timeout_error') {
+          set({
+            error: 'WebSocket 连接超时，请检查后端服务是否正常运行（端口 8000）',
+            status: 'error'
+          });
+          console.log('[detectionStore] WebSocket 连接超时');
+          return;
+        }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : '连接失败';
         set({ error: errorMsg, status: 'error' });
+        console.log('[detectionStore] WebSocket 连接失败:', errorMsg);
         return;
       }
+    } else {
+      console.log('[detectionStore] 使用现有 clientId:', currentClientId);
     }
 
     // 设置检测中状态
@@ -432,11 +455,10 @@ export const detectionStore = createStore<DetectionStore>()(
     },
     {
       name: 'detection-storage',
-      partialize: (state) => ({
-        // 只持久化必要的状态
-        clientId: state.clientId,
+      partialize: () => ({
+        // 不持久化任何状态，clientId 是会话级别的状态
       }),
-    } as PersistOptions<DetectionStore, Pick<DetectionStore, 'clientId'>>
+    } as PersistOptions<DetectionStore, Record<string, never>>
   )
 );
 

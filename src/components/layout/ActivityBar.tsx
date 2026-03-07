@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { Settings as SettingsIcon } from "@mui/icons-material";
 import "../../css/App.css";
 
 /**
@@ -42,7 +43,7 @@ export function ActivityBar({
     [activeTab, onTabChange]
   );
 
-  // 默认导航项（工作、历史）
+  // 默认导航项（工作、设置、历史）
   const defaultItems: NavItem[] = [
     {
       id: "work",
@@ -58,6 +59,13 @@ export function ActivityBar({
         >
           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
         </svg>
+      ),
+    },
+    {
+      id: "settings",
+      title: "设置",
+      icon: (
+        <SettingsIcon sx={{ fontSize: 24 }} />
       ),
     },
     {
