@@ -12,32 +12,37 @@ import { useDetection } from "./hooks/useDetection";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import { registerConnectionListener } from "./store/websocketManager";
 import { shortcutStore } from "./store/shortcutStore";
+import { retrieveApiKey } from "./api/tauri";
 import { theme } from "./main";
 import "./css/App.css";
 
 function App(): React.ReactElement {
-  // 启动时检查 localStorage 中是否存在 API Key
-  const [isActivated, setIsActivated] = useState(() => {
-    if (typeof window !== "undefined") {
-      const apiKey = localStorage.getItem("api_key");
-      return !!apiKey;
-    }
-    return false;
-  });
-
+  // 启动时检查系统密钥环中是否存在 API Key
+  const [isActivated, setIsActivated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<NavItemId | null>("work");
+
+  // 应用挂载时检查 API Key
+  useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        const apiKey = await retrieveApiKey();
+        setIsActivated(!!apiKey);
+      } catch (err) {
+        console.error('[App] 检查 API Key 失败:', err);
+        setIsActivated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkApiKey();
+  }, []);
 
   // 使用检测 Hook
   const {
     mode, images, status, error, clientId, taskId, progress, completedResults,
     setMode, addImages, removeImage, startDetection, cancelDetection, reset,
   } = useDetection();
-
-  // 计算值
-  const isDetecting = status === "detecting" || status === "connecting";
-  const hasImages = images.length > 0;
-  const hasResults = completedResults.length > 0;
-  const isInteractionDisabled = isDetecting || taskId !== null;
 
   // 应用挂载时注册 WebSocket 连接监听器（只调用一次）
   useEffect(() => {
@@ -60,6 +65,22 @@ function App(): React.ReactElement {
     cancelDetection,
     reset
   );
+
+  // 加载状态
+  if (isLoading) {
+    return (
+      <div className="app-loading">
+        <div className="loading-spinner"></div>
+        <p>加载中...</p>
+      </div>
+    );
+  }
+
+  // 计算值
+  const isDetecting = status === "detecting" || status === "connecting";
+  const hasImages = images.length > 0;
+  const hasResults = completedResults.length > 0;
+  const isInteractionDisabled = isDetecting || taskId !== null;
 
   // 如果未激活，显示激活页面
   if (!isActivated) {

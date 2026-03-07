@@ -17,6 +17,7 @@ import {
   detectFusionModeAsync,
   cancelDetection as cancelDetectionApi,
   getSupportedFormats,
+  retrieveApiKey,
 } from '../api/tauri';
 import {
   registerProgressListeners,
@@ -243,9 +244,9 @@ const createTaskSlice = (
     // 设置连接中状态
     set({ status: 'connecting', error: null, progress: 0, completedResults: [] });
 
-    // 获取 clientId（如果需要）
+    // 获取 clientId
     let currentClientId = clientId;
-    const apiKey = localStorage.getItem('api_key') || '';
+    const apiKey = await retrieveApiKey() || '';
 
     console.log('[detectionStore] apiKey:', apiKey ? '存在' : '空');
 
@@ -385,7 +386,7 @@ const createTaskSlice = (
     }
 
     try {
-      const apiKey = localStorage.getItem('api_key') || '';
+      const apiKey = await retrieveApiKey() || '';
       await cancelDetectionApi(taskId, apiKey);
       console.log('[detectionStore] 取消任务成功');
       // 状态更新由 ws_task_completed 事件处理

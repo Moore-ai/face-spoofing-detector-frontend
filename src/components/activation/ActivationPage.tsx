@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
 import {
   activateLicense,
-  type ActivateRequest
+  type ActivateRequest,
+  storeApiKey
 } from "../../api/tauri";
 import { TitleBar } from "../layout/TitleBar";
 import "../../css/Activation.css";
@@ -79,8 +80,8 @@ export function ActivationPage({ onActivate }: ActivationPageProps): React.React
 
       if (response.success && response.apiKey) {
         setIsValid(true);
-        // 存储 API Key 到 localStorage
-        localStorage.setItem("api_key", response.apiKey);
+        // 存储 API Key 到系统密钥环
+        await storeApiKey(response.apiKey);
         // 等待 2.5 秒后进入主页面
         setTimeout(() => onActivate?.(), 2500);
       } else {

@@ -14,6 +14,7 @@ import {
   DialogContentText,
   DialogActions,
 } from "@mui/material";
+import { deleteApiKey } from "../../api/tauri";
 import {
   Settings as SettingsIcon,
   PersonOutlined as PersonIcon,
@@ -73,7 +74,7 @@ export function SettingsPage(): React.ReactElement {
    * 确认登出
    */
   const handleConfirmLogout = () => {
-    localStorage.removeItem("api_key");
+    deleteApiKey();
     setSuccessMessage("已退出登录");
     setLogoutDialogOpen(false);
     setTimeout(() => window.location.reload(), 1000);

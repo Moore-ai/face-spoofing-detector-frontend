@@ -35,6 +35,9 @@ declare global {
         (cmd: "delete_history", args: { params: HistoryDeleteParams }): Promise<HistoryDeleteResponse>;
         (cmd: "get_shortcuts_config"): Promise<ShortcutConfig>;
         (cmd: "save_shortcuts_config_command", args: { config: ShortcutConfig }): Promise<void>;
+        (cmd: "store_api_key", args: { apiKey: string }): Promise<void>;
+        (cmd: "retrieve_api_key"): Promise<string | null>;
+        (cmd: "delete_api_key"): Promise<void>;
       };
     };
   }

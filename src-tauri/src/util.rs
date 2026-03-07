@@ -624,6 +624,65 @@ pub async fn activate_license(
     })
 }
 
+// ===== API Key 安全存储（系统密钥环） =====
+
+/// 将 API Key 存储到系统密钥环
+#[tauri::command]
+pub fn store_api_key(api_key: String) -> Result<(), String> {
+    use keyring::Entry;
+
+    log::info!("存储 API Key 到系统密钥环");
+
+    let entry = Entry::new("face-detection-app", "api_key")
+        .map_err(|e| format!("创建密钥环条目失败：{}", e))?;
+
+    entry.set_password(&api_key)
+        .map_err(|e| format!("存储 API Key 失败：{}", e))?;
+
+    log::info!("API Key 已成功存储到系统密钥环");
+    Ok(())
+}
+
+/// 从系统密钥环检索 API Key
+#[tauri::command]
+pub fn retrieve_api_key() -> Result<Option<String>, String> {
+    use keyring::Entry;
+
+    log::info!("从系统密钥环检索 API Key");
+
+    let entry = Entry::new("face-detection-app", "api_key")
+        .map_err(|e| format!("创建密钥环条目失败：{}", e))?;
+
+    match entry.get_password() {
+        Ok(key) => {
+            log::info!("成功从密钥环检索到 API Key");
+            Ok(Some(key))
+        }
+        Err(keyring::Error::NoEntry) => {
+            log::info!("密钥环中无 API Key 记录");
+            Ok(None)
+        }
+        Err(e) => Err(format!("从密钥环读取失败：{}", e)),
+    }
+}
+
+/// 从系统密钥环删除 API Key
+#[tauri::command]
+pub fn delete_api_key() -> Result<(), String> {
+    use keyring::Entry;
+
+    log::info!("从系统密钥环删除 API Key");
+
+    let entry = Entry::new("face-detection-app", "api_key")
+        .map_err(|e| format!("创建密钥环条目失败：{}", e))?;
+
+    entry.delete_credential()
+        .map_err(|e| format!("删除 API Key 失败：{}", e))?;
+
+    log::info!("API Key 已从密钥环删除");
+    Ok(())
+}
+
 // ===== 历史记录 API =====
 
 /// 历史查询参数

@@ -290,8 +290,8 @@ export interface HistoryDeleteResponse {
 /**
  * 获取存储的 API Key
  */
-function getApiKey(): string {
-  return localStorage.getItem("api_key") || "";
+async function getApiKey(): Promise<string> {
+  return await retrieveApiKey() || "";
 }
 
 /**
@@ -334,7 +334,7 @@ export async function queryHistory(params: HistoryQueryParams): Promise<HistoryQ
   if (params.page) queryParams.page = params.page.toString();
   if (params.pageSize) queryParams.pageSize = params.pageSize.toString();
 
-  const apiKey = getApiKey();
+  const apiKey = await getApiKey();
   console.log("[History API] queryHistory 调用 Rust，params:", queryParams, "apiKey:", apiKey ? "存在" : "空");
   const result = await invoke<HistoryQueryResponse>("query_history", {
     params: queryParams,
@@ -372,7 +372,7 @@ export async function getHistoryStats(params?: HistoryStatsParams): Promise<Hist
   if (params?.status) queryParams.status = params.status;
   if (params?.days) queryParams.days = params.days.toString();
 
-  const apiKey = getApiKey();
+  const apiKey = await getApiKey();
   console.log("[History API] getHistoryStats 调用 Rust，params:", queryParams, "apiKey:", apiKey ? "存在" : "空");
   return await invoke<HistoryStatsResponse>("get_history_stats", {
     params: queryParams,
@@ -437,4 +437,48 @@ export async function saveShortcutsConfig(config: ShortcutConfig): Promise<void>
     console.error("[Shortcut API] 保存失败:", err);
     throw err;
   }
+}
+
+// ===== API Key 安全存储（系统密钥环） =====
+
+/**
+ * 将 API Key 存储到系统密钥环
+ */
+export async function storeApiKey(apiKey: string): Promise<void> {
+  console.log("[Keyring API] 存储 API Key 到系统密钥环");
+  if (!isTauri()) {
+    console.log("[Keyring API] 开发模式，模拟存储到 localStorage");
+    localStorage.setItem("api_key", apiKey);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return;
+  }
+  await invoke<void>("store_api_key", { apiKey });
+  console.log("[Keyring API] API Key 已存储到系统密钥环");
+}
+
+/**
+ * 从系统密钥环检索 API Key
+ */
+export async function retrieveApiKey(): Promise<string | null> {
+  console.log("[Keyring API] 从系统密钥环检索 API Key");
+  if (!isTauri()) {
+    console.log("[Keyring API] 开发模式，从 localStorage 读取");
+    return localStorage.getItem("api_key");
+  }
+  return await invoke<string | null>("retrieve_api_key");
+}
+
+/**
+ * 从系统密钥环删除 API Key
+ */
+export async function deleteApiKey(): Promise<void> {
+  console.log("[Keyring API] 从系统密钥环删除 API Key");
+  if (!isTauri()) {
+    console.log("[Keyring API] 开发模式，从 localStorage 删除");
+    localStorage.removeItem("api_key");
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return;
+  }
+  await invoke<void>("delete_api_key");
+  console.log("[Keyring API] API Key 已从密钥环删除");
 }

@@ -19,6 +19,9 @@ use util::{
     get_ws_status,
     query_history,
     validate_image,
+    store_api_key,
+    retrieve_api_key,
+    delete_api_key,
     WsConnectionStateRef,
 };
 use reqwest::Client;
@@ -93,6 +96,9 @@ pub fn run() {
             delete_history,
             get_shortcuts_config,
             save_shortcuts_config_command,
+            store_api_key,
+            retrieve_api_key,
+            delete_api_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
