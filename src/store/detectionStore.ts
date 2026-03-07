@@ -247,7 +247,13 @@ const createTaskSlice = (
 
     // 获取 clientId
     let currentClientId = clientId;
-    const apiKey = detectionStore.getState().api!;
+
+    // 检查 API Key 是否存在
+    const apiKey = detectionStore.getState().api;
+    if (!apiKey) {
+      set({ error: 'API Key 不存在，请重新激活', status: 'error' });
+      return;
+    }
 
     console.log('[detectionStore] apiKey:', apiKey ? '存在' : '空');
 

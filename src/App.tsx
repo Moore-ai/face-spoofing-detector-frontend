@@ -2,12 +2,11 @@ import { useState, useEffect } from "react";
 import { ThemeProvider } from "@mui/material";
 import { TitleBar } from "./components/layout/TitleBar";
 import { ActivityBar, type NavItemId } from "./components/layout/ActivityBar";
-import { ModeSelector } from "./components/detection/ModeSelector";
-import { ImageUploader } from "./components/detection/ImageUploader";
 import { ResultPanel } from "./components/detection/ResultPanel";
 import { ActivationPage } from "./components/activation/ActivationPage";
 import { HistoryPage } from "./components/history/HistoryPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
+import { WorkSidebar } from "./components/work/WorkSidebar";
 import { useDetection } from "./hooks/useDetection";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import { registerConnectionListener } from "./store/websocketManager";
@@ -28,9 +27,14 @@ function App(): React.ReactElement {
     const checkApiKey = async () => {
       try {
         const apiKey = await retrieveApiKey();
-        setIsActivated(!!apiKey);
-        detectionStore.setState({ api: apiKey });
+        if (apiKey) {
+          setIsActivated(true);
+          detectionStore.setState({ api: apiKey });
+        } else {
+          setIsActivated(false);
+        }
       } catch (err) {
+        console.error('[App] 读取 API Key 失败:', err);
         setIsActivated(false);
       } finally {
         setIsLoading(false);
@@ -95,66 +99,25 @@ function App(): React.ReactElement {
           {/* ===== 活动栏 (Activity Bar) ===== */}
           <ActivityBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-          {/* ===== 侧边栏 (Sidebar) ===== */}
+          {/* ===== 侧边栏 (Sidebar) - 只在工作 tab 显示 ===== */}
           {activeTab === "work" && (
-            <aside className="sidebar">
-              <div className="sidebar-scroll">
-                <ModeSelector
-                  currentMode={mode}
-                  onModeChange={setMode}
-                  disabled={isInteractionDisabled || hasImages}
-                />
-
-                <ImageUploader
-                  mode={mode}
-                  images={images}
-                  onImagesAdd={addImages}
-                  onImageRemove={removeImage}
-                  disabled={isInteractionDisabled}
-                />
-
-                {error && (
-                  <div className="error-message">
-                    <span className="error-icon">⚠</span>
-                    {error}
-                  </div>
-                )}
-
-                <div className="action-buttons">
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={startDetection}
-                    disabled={!hasImages || isInteractionDisabled}
-                  >
-                    {status === "connecting"
-                      ? "连接中..."
-                      : status === "detecting"
-                        ? `检测中 ${progress}%`
-                        : "开始检测"}
-                  </button>
-
-                  {isInteractionDisabled && taskId && (
-                    <button
-                      type="button"
-                      className="btn btn-danger"
-                      onClick={cancelDetection}
-                    >
-                      取消任务
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={reset}
-                    disabled={isInteractionDisabled || (!hasImages && !hasResults)}
-                  >
-                    清空重置
-                  </button>
-                </div>
-              </div>
-            </aside>
+            <WorkSidebar
+              mode={mode}
+              images={images}
+              status={status}
+              taskId={taskId}
+              progress={progress}
+              error={error}
+              hasImages={hasImages}
+              hasResults={hasResults}
+              isInteractionDisabled={isInteractionDisabled}
+              onModeChange={setMode}
+              onImagesAdd={addImages}
+              onImageRemove={removeImage}
+              onStartDetection={startDetection}
+              onCancelTask={cancelDetection}
+              onReset={reset}
+            />
           )}
 
           {/* ===== 主内容区 (Main Content) ===== */}

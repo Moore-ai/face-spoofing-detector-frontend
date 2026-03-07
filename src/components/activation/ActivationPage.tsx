@@ -5,6 +5,7 @@ import {
   storeApiKey
 } from "../../api/tauri";
 import { TitleBar } from "../layout/TitleBar";
+import { detectionStore } from "../../store";
 import "../../css/Activation.css";
 
 interface ActivationPageProps {
@@ -82,6 +83,8 @@ export function ActivationPage({ onActivate }: ActivationPageProps): React.React
         setIsValid(true);
         // 存储 API Key 到系统密钥环
         await storeApiKey(response.apiKey);
+        // 同时存储到 detectionStore
+        detectionStore.setState({ api: response.apiKey });
         // 等待 2.5 秒后进入主页面
         setTimeout(() => onActivate?.(), 2500);
       } else {
