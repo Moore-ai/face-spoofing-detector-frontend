@@ -14,6 +14,7 @@ import { registerConnectionListener } from "./store/websocketManager";
 import { shortcutStore } from "./store/shortcutStore";
 import { retrieveApiKey } from "./api/tauri";
 import { theme } from "./main";
+import { detectionStore } from "./store";
 import "./css/App.css";
 
 function App(): React.ReactElement {
@@ -28,6 +29,7 @@ function App(): React.ReactElement {
       try {
         const apiKey = await retrieveApiKey();
         setIsActivated(!!apiKey);
+        detectionStore.setState({ api: apiKey });
       } catch (err) {
         setIsActivated(false);
       } finally {
