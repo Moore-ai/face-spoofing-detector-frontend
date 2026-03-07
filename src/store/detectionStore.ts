@@ -403,11 +403,12 @@ const createTaskSlice = (
   },
 
   reset: () => {
-    const { clientId } = get();
+    const { clientId, api } = get();
     cleanupProgressListeners();
     set({
       ...createInitialState(),
       clientId, // 保留 clientId
+      api,      // 保留 API Key
     });
   },
 });

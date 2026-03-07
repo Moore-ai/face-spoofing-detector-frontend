@@ -64,15 +64,6 @@ export interface BaseProps {
   className?: string;
 }
 
-// 用户 WebSocket 状态
-export interface UserState {
-  clientId: string | null;
-  taskId: string | null;
-  isConnected: boolean;
-  progress: number;
-  completedResults: DetectionResultItem[];
-}
-
 // WebSocket 进度消息
 export interface WsProgressMessage {
   type: "progress" | "task_completed" | "task_failed";

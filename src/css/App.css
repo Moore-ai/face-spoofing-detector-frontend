@@ -1257,12 +1257,31 @@ body,
 /* 历史列表容器 */
 .history-list {
   flex: 1;
-  overflow: hidden;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   background: var(--vscode-card-bg);
   border-radius: var(--vscode-radius-md);
   border: 1px solid var(--vscode-card-border);
+}
+
+.history-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.history-list::-webkit-scrollbar-track {
+  background: var(--vscode-bg);
+  border-radius: 4px;
+}
+
+.history-list::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbar);
+  border-radius: 4px;
+}
+
+.history-list::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbar-hover);
 }
 
 .history-list .loading-state,
@@ -1286,6 +1305,7 @@ body,
   position: sticky;
   top: 0;
   z-index: 10;
+  box-shadow: 0 1px 0 var(--vscode-border);
 }
 
 .history-table th {
@@ -1299,7 +1319,7 @@ body,
 
 .history-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid var(--vscode-border);
+  border-bottom: 1px solid var(--vscode-border-light);
   color: var(--vscode-text-primary);
 }
 
@@ -1400,6 +1420,32 @@ body,
 .history-pagination .page-info {
   font-size: 13px;
   color: var(--vscode-text-secondary);
+}
+
+/* 页码箭头 */
+.page-arrow {
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+/* 页码按钮 */
+.page-number-btn {
+  background: rgba(55, 148, 255, 0.15);
+  border: 1px solid var(--vscode-border);
+  border-radius: 4px;
+  color: #3794ff;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'SF Mono', monospace;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.page-number-btn:hover {
+  background: rgba(55, 148, 255, 0.3);
+  border-color: #3794ff;
+  box-shadow: 0 0 8px rgba(55, 148, 255, 0.3);
 }
 
 .history-pagination .btn {

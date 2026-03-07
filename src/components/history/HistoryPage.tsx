@@ -9,7 +9,7 @@ import {
 } from "./index";
 import "../../css/App.css";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 9;
 
 /**
  * 历史记录页面组件

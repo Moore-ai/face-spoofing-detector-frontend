@@ -1,12 +1,12 @@
-import type { ImageInfo, UserState } from "../../types";
+import type { ImageInfo } from "../../types";
 import type { BaseProps } from "../../types";
 import { calculateDetectionStats } from "../../utils/stats";
 import { LoadingState, EmptyState, ResultsView } from "./ResultPanelStates";
+import { useDetectionStore } from "../../store/detectionStore";
 
 interface ResultPanelProps extends BaseProps {
   images: ImageInfo[];
   status: string;
-  userState?: UserState;
 }
 
 /**
@@ -16,10 +16,10 @@ interface ResultPanelProps extends BaseProps {
 export function ResultPanel({
   images,
   status,
-  userState,
   className = "",
 }: ResultPanelProps): React.ReactElement {
-  const completedResults = userState?.completedResults || [];
+  // 直接从 detectionStore 获取 completedResults
+  const completedResults = useDetectionStore((state) => state.completedResults);
 
   // 有结果时优先显示结果（即使还在加载中）
   if (completedResults.length > 0) {

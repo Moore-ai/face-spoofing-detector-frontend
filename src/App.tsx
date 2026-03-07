@@ -45,7 +45,7 @@ function App(): React.ReactElement {
 
   // 使用检测 Hook
   const {
-    mode, images, status, error, clientId, taskId, progress, completedResults,
+    mode, images, status, error, taskId, progress, completedResults,
     setMode, addImages, removeImage, startDetection, cancelDetection, reset,
   } = useDetection();
 
@@ -126,13 +126,6 @@ function App(): React.ReactElement {
               <ResultPanel
                 images={images}
                 status={status}
-                userState={{
-                  clientId,
-                  taskId,
-                  isConnected: status !== "idle",
-                  progress,
-                  completedResults,
-                }}
               />
             ) : activeTab === "history" ? (
               <HistoryPage />
