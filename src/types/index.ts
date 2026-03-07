@@ -124,3 +124,76 @@ export interface ShortcutValidationResult {
   valid: boolean;
   error?: string;
 }
+
+// ===== 历史记录相关类型 =====
+
+/**
+ * 历史检测结果项
+ */
+export interface HistoryResultItem {
+  mode: string;
+  modality?: string;        // "rgb", "ir" 或 null
+  result: string;           // "real", "fake", "error"
+  confidence: number;
+  probabilities: number[];  // [real_prob, fake_prob]
+  processingTime: number;   // 毫秒
+  imageIndex?: number;      // 批次中的索引
+  error?: string;           // 错误信息
+  retryCount?: number;      // 重试次数
+}
+
+/**
+ * 历史任务项
+ */
+export interface HistoryTaskItem {
+  taskId: string;
+  clientId?: string;
+  mode: string;             // "single" 或 "fusion"
+  status: string;           // "completed", "partial_failure", "failed"
+  totalItems: number;
+  successfulItems: number;
+  failedItems: number;
+  realCount: number;
+  fakeCount: number;
+  elapsedTimeMs: number;
+  createdAt: string;        // ISO 8601
+  completedAt?: string;     // ISO 8601
+  results?: HistoryResultItem[];
+}
+
+/**
+ * 历史记录查询响应
+ */
+export interface HistoryQueryResponse {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  items: HistoryTaskItem[];
+}
+
+/**
+ * 获取所有历史记录响应（无分页）
+ */
+export interface HistoryAllResponse {
+  total: number;
+  apiKeyHash: string;
+  items: HistoryTaskItem[];
+}
+
+/**
+ * 历史统计信息响应
+ */
+export interface HistoryStatsResponse {
+  totalTasks: number;
+  totalInferences: number;
+  totalReal: number;
+  totalFake: number;
+  totalErrors: number;
+  successRate: number;
+  avgProcessingTimeMs: number;
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+}

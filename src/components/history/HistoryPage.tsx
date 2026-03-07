@@ -1,159 +1,50 @@
-import { useState, useEffect, useCallback } from "react";
-import {
-  queryHistory,
-  getHistoryStats,
-  deleteHistory,
-  type HistoryTaskItem,
-  type HistoryQueryParams,
-  type HistoryStatsResponse,
-} from "../../api/tauri";
+import { useEffect } from "react";
+import { useHistoryStore, filterHistoryItems, paginateItems } from "../../store/historyStore";
 import {
   HistoryStatsPanel,
   HistoryFilters,
   HistoryTable,
   HistoryPagination,
   TaskDetailModal,
-  type FilterState,
 } from "./index";
 import "../../css/App.css";
 
-interface HistoryPageProps {
-  clientId?: string | null;
-}
+const PAGE_SIZE = 20;
 
 /**
- * 历史记录页面组件（纯服务器数据源）
+ * 历史记录页面组件
+ * 所有状态由 historyStore 管理
  */
-export function HistoryPage({}: HistoryPageProps): React.ReactElement {
-  // 过滤条件
-  const [filters, setFilters] = useState<FilterState>({
-    mode: "",
-    status: "",
-    days: "",
-  });
+export function HistoryPage(): React.ReactElement {
+  // 从 Store 获取状态
+  const items = useHistoryStore((state) => state.items);
+  const stats = useHistoryStore((state) => state.stats);
+  const page = useHistoryStore((state) => state.page);
+  const isLoading = useHistoryStore((state) => state.isLoading);
+  const error = useHistoryStore((state) => state.error);
+  const isDetailLoading = useHistoryStore((state) => state.isDetailLoading);
+  const selectedTask = useHistoryStore((state) => state.selectedTask);
+  const filters = useHistoryStore((state) => state.filters);
 
-  // 分页状态
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  // 从 Store 获取方法
+  const loadHistory = useHistoryStore((state) => state.loadHistory);
+  const reloadHistory = useHistoryStore((state) => state.reloadHistory);
+  const deleteHistoryFromServer = useHistoryStore((state) => state.deleteHistoryFromServer);
+  const handleFilterChange = useHistoryStore((state) => state.handleFilterChange);
+  const resetFilters = useHistoryStore((state) => state.resetFilters);
+  const setSelectedTask = useHistoryStore((state) => state.setSelectedTask);
+  const setPage = useHistoryStore((state) => state.setPage);
+  const fetchTaskDetail = useHistoryStore((state) => state.fetchTaskDetail);
 
-  // 服务器数据
-  const [historyItems, setHistoryItems] = useState<HistoryTaskItem[]>([]);
-  const [stats, setStats] = useState<HistoryStatsResponse | null>(null);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // 详情加载状态
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  // 选中的任务详情
-  const [selectedTask, setSelectedTask] = useState<HistoryTaskItem | null>(null);
-
-  // 加载服务器数据
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const params: HistoryQueryParams = {
-        page,
-        pageSize,
-      };
-
-      // 注意：不传入 clientId，因为后端已经通过 api_key_hash 来过滤用户数据
-      // 传入 clientId 可能导致在 WebSocket 重连后查询不到新数据
-      if (filters.mode) params.mode = filters.mode;
-      if (filters.status) params.status = filters.status;
-      if (filters.days) params.days = parseInt(filters.days, 10);
-
-      const statsParams = {
-        // 不传入 clientId，理由同上
-        ...(filters.mode ? { mode: filters.mode } : {}),
-        ...(filters.status ? { status: filters.status } : {}),
-        ...(filters.days ? { days: parseInt(filters.days, 10) } : {}),
-      };
-
-      console.log("[HistoryPage] 开始加载数据，params:", params);
-      const [historyRes, statsRes] = await Promise.all([
-        queryHistory(params),
-        getHistoryStats(Object.keys(statsParams).length > 0 ? statsParams : undefined),
-      ]);
-      console.log("[HistoryPage] 数据加载成功", historyRes, statsRes);
-
-      setHistoryItems(historyRes.items);
-      setTotal(historyRes.total);
-      setTotalPages(historyRes.totalPages);
-      setStats(statsRes);
-    } catch (err) {
-      console.error("[HistoryPage] 加载数据失败:", err);
-      const msg = err instanceof Error ? err.message : "加载失败";
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize, filters]);
-
-  // 初始加载和过滤条件变化时重新加载
+  // 初始化加载
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadHistory();
+  }, [loadHistory]);
 
-  // 过滤条件变更时重置页码
-  const handleFilterChange = (key: keyof FilterState, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    setPage(1);
-  };
-
-  // 删除服务器任务
-  const handleDelete = async (taskId?: string) => {
-    if (!taskId) return;
-
-    const confirmed = window.confirm("确定要删除这条历史记录吗？");
-    if (!confirmed) return;
-
-    try {
-      await deleteHistory({ taskIds: [taskId] });
-      // 删除后重新加载数据（包括统计信息）
-      loadData();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "删除失败";
-      setError(msg);
-    }
-  };
-
-  // 查询任务详情
-  const fetchTaskDetail = async (task: HistoryTaskItem) => {
-    setDetailLoading(true);
-    setSelectedTask(null);
-
-    try {
-      // 从服务器获取任务详情（包含 results）
-      // 不传入 clientId，后端会通过 api_key_hash 自动过滤
-      const response = await queryHistory({
-        page: 1,
-        pageSize: 100,
-      });
-      const found = response.items.find((item) => item.taskId === task.taskId);
-
-      if (found) {
-        setSelectedTask(found);
-      } else {
-        setSelectedTask(task);
-      }
-    } catch (e) {
-      console.error("[HistoryPage] 获取任务详情失败:", e);
-      setSelectedTask(task);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  // 重置过滤器
-  const handleReset = () => {
-    setFilters({ mode: "", status: "", days: "" });
-    setPage(1);
-  };
+  // 计算过滤和分页后的数据
+  const filteredItems = filterHistoryItems(items, filters);
+  const paginatedItems = paginateItems(filteredItems, page, PAGE_SIZE);
+  const totalPages = calculateTotalPages(filteredItems.length, PAGE_SIZE);
 
   return (
     <div className="history-page">
@@ -164,7 +55,8 @@ export function HistoryPage({}: HistoryPageProps): React.ReactElement {
       <HistoryFilters
         filters={filters}
         onFilterChange={handleFilterChange}
-        onReset={handleReset}
+        onReset={resetFilters}
+        onRefresh={reloadHistory}
       />
 
       {/* 错误提示 */}
@@ -172,11 +64,11 @@ export function HistoryPage({}: HistoryPageProps): React.ReactElement {
 
       {/* 历史列表 */}
       <HistoryTable
-        historyItems={historyItems}
+        historyItems={paginatedItems}
         selectedTask={selectedTask}
-        loading={loading}
+        loading={isLoading}
         onSelectTask={fetchTaskDetail}
-        onDeleteServer={handleDelete}
+        onDeleteServer={deleteHistoryFromServer}
       />
 
       {/* 分页 */}
@@ -184,7 +76,7 @@ export function HistoryPage({}: HistoryPageProps): React.ReactElement {
         <HistoryPagination
           page={page}
           totalPages={totalPages}
-          total={total}
+          total={filteredItems.length}
           onPageChange={setPage}
         />
       )}
@@ -192,9 +84,14 @@ export function HistoryPage({}: HistoryPageProps): React.ReactElement {
       {/* 详情面板 */}
       <TaskDetailModal
         task={selectedTask}
-        loading={detailLoading}
+        loading={isDetailLoading}
         onClose={() => setSelectedTask(null)}
       />
     </div>
   );
+}
+
+// 工具函数
+function calculateTotalPages(total: number, pageSize: number): number {
+  return Math.ceil(total / pageSize);
 }

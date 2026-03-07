@@ -29,7 +29,6 @@ function App(): React.ReactElement {
         const apiKey = await retrieveApiKey();
         setIsActivated(!!apiKey);
       } catch (err) {
-        console.error('[App] 检查 API Key 失败:', err);
         setIsActivated(false);
       } finally {
         setIsLoading(false);
@@ -52,9 +51,6 @@ function App(): React.ReactElement {
   // 应用挂载时加载快捷键配置
   useEffect(() => {
     console.log('[App] 加载快捷键配置...');
-    // 清除 localStorage 中旧的快捷键配置和检测状态（迁移到 Rust 后端）
-    localStorage.removeItem('shortcut-config');
-    localStorage.removeItem('detection-storage');
     shortcutStore.getState().loadConfig();
   }, []);
 
@@ -174,7 +170,7 @@ function App(): React.ReactElement {
                 }}
               />
             ) : activeTab === "history" ? (
-              <HistoryPage clientId={clientId} />
+              <HistoryPage />
             ) : activeTab === "settings" ? (
               <SettingsPage />
             ) : null}

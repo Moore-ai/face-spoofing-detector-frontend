@@ -4,12 +4,14 @@ interface HistoryFiltersProps {
   filters: FilterState;
   onFilterChange: (key: keyof FilterState, value: string) => void;
   onReset: () => void;
+  onRefresh?: () => void;
 }
 
 export function HistoryFilters({
   filters,
   onFilterChange,
   onReset,
+  onRefresh,
 }: HistoryFiltersProps): React.ReactElement {
   return (
     <div className="history-filters">
@@ -63,6 +65,17 @@ export function HistoryFilters({
         type="button"
         className="btn btn-secondary"
         onClick={onReset}
+        title="重置过滤条件"
+      >
+        重置
+      </button>
+
+      {/* 刷新按钮 */}
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={onRefresh}
+        title="从服务器刷新数据"
       >
         刷新
       </button>

@@ -17,6 +17,7 @@ import type {
   HistoryDeleteResponse,
   HistoryDeleteParams,
   ShortcutConfig,
+  HistoryAllResponse,
 } from "./tauri";
 
 declare global {
@@ -31,6 +32,7 @@ declare global {
         (cmd: "get_ws_status"): Promise<[string | null, boolean]>;
         (cmd: "activate_license", args: { request: ActivateRequest }): Promise<ActivateResponse>;
         (cmd: "query_history", args: { params: Record<string, string> }): Promise<HistoryQueryResponse>;
+        (cmd: "get_all_history"): Promise<HistoryAllResponse>;
         (cmd: "get_history_stats", args: { params?: Record<string, string> }): Promise<HistoryStatsResponse>;
         (cmd: "delete_history", args: { params: HistoryDeleteParams }): Promise<HistoryDeleteResponse>;
         (cmd: "get_shortcuts_config"): Promise<ShortcutConfig>;

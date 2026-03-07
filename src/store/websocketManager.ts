@@ -6,8 +6,9 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import type { Event } from '@tauri-apps/api/event';
 import { detectionStore } from './detectionStore';
+import { historyStore } from './historyStore';
 import type { RustTaskDetectionResultItem, WsEventMessage } from '../api/tauri';
-import type { DetectionResultItem } from '../types'
+import type { DetectionResultItem, HistoryTaskItem } from '../types'
 
 // 存储所有 unlisten 函数
 let unlistenFns: UnlistenFn[] = [];
@@ -88,6 +89,8 @@ export async function registerProgressListeners(): Promise<void> {
     (event: Event<WsEventMessage>) => {
       const wsMsg = event.payload;
       console.log('[WebSocket] 收到 ws_task_completed 事件:', wsMsg);
+      console.log('[WebSocket] taskId:', wsMsg.taskId);
+      console.log('[WebSocket] status:', wsMsg.status);
 
       // 标记任务已完成
       isTaskCompleted = true;
@@ -98,6 +101,40 @@ export async function registerProgressListeners(): Promise<void> {
       } else {
         console.log('[WebSocket] 任务完成');
         detectionStore.getState().setTaskCompleted('completed');
+
+        // 任务完成后，从 detectionStore 获取已收集的检测结果，添加到历史记录 store
+        const completedResults = detectionStore.getState().completedResults;
+        if (completedResults.length > 0) {
+          // 从结果中提取 mode
+          const mode = completedResults[0]?.result === 'error' ? 'single' : 'single';
+
+          const historyItem: HistoryTaskItem = {
+            taskId: wsMsg.taskId,
+            mode,
+            status: wsMsg.status || 'completed',
+            totalItems: completedResults.length,
+            successfulItems: completedResults.filter(r => r.result !== 'error').length,
+            failedItems: completedResults.filter(r => r.result === 'error').length,
+            realCount: completedResults.filter(r => r.result === 'real').length,
+            fakeCount: completedResults.filter(r => r.result === 'fake').length,
+            elapsedTimeMs: completedResults.reduce((sum, r) => sum + r.processingTime, 0),
+            createdAt: completedResults[0]?.timestamp || new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+            results: completedResults.map((r) => ({
+              mode,
+              modality: undefined,
+              result: r.result,
+              confidence: r.confidence,
+              probabilities: [],
+              processingTime: r.processingTime,
+              imageIndex: r.imageIndex,
+              error: r.errorMessage,
+            })),
+          };
+          historyStore.getState().addHistory(historyItem);
+        } else {
+          console.log('[WebSocket] 没有已完成的结果，跳过添加历史记录');
+        }
       }
     }
   );

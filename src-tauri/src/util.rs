@@ -291,6 +291,19 @@ fn handle_ws_message(app: &AppHandle, text: &str) -> Result<(), String> {
             let task_id = data.get("task_id").and_then(|v| v.as_str()).unwrap_or("");
             log::info!("任务 ID: {}", task_id);
 
+            // 解析 completed_results（如果存在）
+            let completed_results = data.get("completed_results")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|item| {
+                            serde_json::from_value::<DetectionResultItem>(item.clone()).ok()
+                        })
+                        .collect::<Vec<_>>()
+                });
+
+            log::info!("解析 completed_results: {:?}", completed_results.as_ref().map(|r| r.len()));
+
             let event = WsEventMessage {
                 event_type: "task_completed".to_string(),
                 task_id: task_id.to_string(),
@@ -299,7 +312,7 @@ fn handle_ws_message(app: &AppHandle, text: &str) -> Result<(), String> {
                 result: None,
                 total_items: data.get("total_items").and_then(|v| v.as_u64()).map(|v| v as u32),
                 processed_items: data.get("processed_items").and_then(|v| v.as_u64()).map(|v| v as u32),
-                completed_results: None,
+                completed_results,
             };
 
             log::info!("发送 ws_task_completed 事件到前端");
@@ -728,67 +741,51 @@ pub struct BackendHistoryResultItem {
 }
 
 /// 历史任务项（从后端返回）
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct BackendHistoryTaskItem {
     pub task_id: String,
-    #[serde(default)]
     pub client_id: Option<String>,
-    #[serde(default)]
     pub api_key_hash: Option<String>,
     pub mode: String,
     pub status: String,
-    #[serde(default)]
     pub total_items: u32,
-    #[serde(default)]
     pub successful_items: u32,
-    #[serde(default)]
     pub failed_items: u32,
-    #[serde(default)]
     pub real_count: u32,
-    #[serde(default)]
     pub fake_count: u32,
-    #[serde(default)]
     pub elapsed_time_ms: u64,
     pub created_at: String,
-    #[serde(default)]
     pub completed_at: Option<String>,
-    #[serde(default)]
     pub results: Option<Vec<BackendHistoryResultItem>>,
 }
 
 /// 历史查询响应（从后端返回）
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct BackendHistoryQueryResponse {
     pub total: u32,
     pub page: u32,
     pub page_size: u32,
     pub total_pages: u32,
-    #[serde(default)]
     pub items: Vec<BackendHistoryTaskItem>,
 }
 
 /// 历史统计响应（从后端返回）
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct BackendHistoryStatsResponse {
-    #[serde(default)]
     pub total_tasks: u32,
-    #[serde(default)]
     pub total_inferences: u32,
-    #[serde(default)]
     pub total_real: u32,
-    #[serde(default)]
     pub total_fake: u32,
-    #[serde(default)]
     pub total_errors: u32,
-    #[serde(default)]
     pub success_rate: f64,
-    #[serde(default)]
     pub avg_processing_time_ms: f64,
-    #[serde(default)]
     pub date_range: Option<BackendDateRange>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct BackendDateRange {
     pub start: Option<String>,
     pub end: Option<String>,
@@ -799,6 +796,14 @@ pub struct BackendDateRange {
 pub struct BackendHistoryDeleteResponse {
     pub deleted_count: u32,
     pub message: String,
+}
+
+/// 获取所有历史记录响应（从后端返回）
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BackendHistoryAllResponse {
+    pub total: u32,
+    pub api_key_hash: String,
+    pub items: Vec<BackendHistoryTaskItem>,
 }
 
 /// 历史查询响应（返回给前端）
@@ -873,6 +878,16 @@ pub struct DateRange {
 pub struct HistoryDeleteResponse {
     pub success: bool,
     pub message: String,
+}
+
+/// 获取所有历史记录响应（返回给前端）
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryAllResponse {
+    pub total: u32,
+    #[serde(rename = "apiKeyHash")]
+    pub api_key_hash: String,
+    pub items: Vec<HistoryTaskItem>,
 }
 
 impl From<BackendHistoryResultItem> for HistoryResultItem {
@@ -1173,5 +1188,61 @@ pub async fn delete_history(
     Ok(HistoryDeleteResponse {
         success: true,
         message: backend_response.message,
+    })
+}
+
+/// 获取所有历史记录（无分页）
+#[tauri::command]
+pub async fn get_all_history(
+    api_key: String,
+    http_client: State<'_, Client>,
+) -> Result<HistoryAllResponse, String> {
+    let api_url = format!("{}/history/all", get_api_base_url());
+
+    log::info!("获取所有历史记录：{}", api_url);
+    log::info!("API Key 长度：{}, 前缀：{}", api_key.len(), &api_key[..std::cmp::min(12, api_key.len())]);
+
+    let response = http_client
+        .get(&api_url)
+        .header("X-API-Key", &api_key)
+        .send()
+        .await
+        .map_err(|e| format!("网络请求失败：{}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        log::error!("获取所有历史记录失败：{} - {}", status, error_text);
+        return Err(format!("服务器返回错误 ({}): {}", status, error_text));
+    }
+
+    // 先获取原始文本用于调试
+    let response_text = response.text().await.map_err(|e| {
+        log::error!("读取响应文本失败：{}", e);
+        format!("读取响应失败：{}", e)
+    })?;
+
+    log::info!("后端返回的原始 JSON: {}", response_text);
+
+    // 解析后端响应（后端返回 HistoryAllResponse 格式）
+    let backend_response: BackendHistoryAllResponse = serde_json::from_str(&response_text)
+        .map_err(|e| {
+            log::error!("解析响应 JSON 失败：{}", e);
+            format!("解析响应失败：{}", e)
+        })?;
+
+    log::info!("解析成功，total: {}, items: {}", backend_response.total, backend_response.items.len());
+
+    // 转换响应格式
+    let items = backend_response
+        .items
+        .into_iter()
+        .map(HistoryTaskItem::from)
+        .collect();
+
+    Ok(HistoryAllResponse {
+        total: backend_response.total,
+        api_key_hash: backend_response.api_key_hash,
+        items,
     })
 }

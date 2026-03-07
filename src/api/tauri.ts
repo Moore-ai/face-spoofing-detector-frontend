@@ -287,6 +287,12 @@ export interface HistoryDeleteResponse {
   message: string;
 }
 
+export interface HistoryAllResponse {
+  total: number;
+  apiKeyHash: string;
+  items: HistoryTaskItem[];
+}
+
 /**
  * 获取存储的 API Key
  */
@@ -390,9 +396,33 @@ export async function deleteHistory(params: HistoryDeleteParams): Promise<Histor
     return { success: true, message: "删除成功（模拟）" };
   }
 
-  const apiKey = getApiKey();
+  const apiKey = await getApiKey();
   return await invoke<HistoryDeleteResponse>("delete_history", {
     params,
+    apiKey,
+  });
+}
+
+/**
+ * 获取所有历史记录（无分页）
+ */
+export async function getAllHistory(): Promise<HistoryAllResponse> {
+  if (!isTauri()) {
+    console.log("[History API] 开发模式，模拟获取所有历史记录");
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return {
+      total: 0,
+      apiKeyHash: "",
+      items: [],
+    };
+  }
+
+  const apiKey = await getApiKey();
+  console.log("[History API] getAllHistory 调用，apiKey:", apiKey ? apiKey.substring(0, 12) + "..." : "空");
+  if (!apiKey) {
+    console.error("[History API] API Key 为空，请先激活产品");
+  }
+  return await invoke<HistoryAllResponse>("get_all_history", {
     apiKey,
   });
 }

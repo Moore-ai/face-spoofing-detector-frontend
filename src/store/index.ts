@@ -18,3 +18,15 @@ export {
   waitForClientId,
   isTaskCompletedRef,
 } from './websocketManager';
+
+// ===== 历史记录 Store =====
+
+export {
+  historyStore,
+  useHistoryStore,
+  getHistoryItems,
+  getHistoryItemsLength,
+  getHistoryByTaskId,
+} from './historyStore';
+
+export type { HistoryStore, FilterState } from './historyStore';
