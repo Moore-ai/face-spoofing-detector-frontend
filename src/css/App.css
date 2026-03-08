@@ -1332,6 +1332,14 @@ body,
   background: rgba(0, 120, 212, 0.15);
 }
 
+.history-table tbody tr.row-selected {
+  background: rgba(55, 148, 255, 0.2);
+}
+
+.history-table tbody tr.row-selected:hover {
+  background: rgba(55, 148, 255, 0.3);
+}
+
 .history-table tbody tr.selected {
   background: rgba(0, 120, 212, 0.25);
 }
@@ -1415,6 +1423,19 @@ body,
   padding: var(--vscode-spacing-md);
   border-top: 1px solid var(--vscode-border);
   background: var(--vscode-bg);
+}
+
+/* 翻页导航器 */
+.page-navigator {
+  display: flex;
+  align-items: center;
+  gap: var(--vscode-spacing-md);
+}
+
+/* 批量操作区域 */
+.bulk-actions {
+  display: flex;
+  align-items: center;
 }
 
 .history-pagination .page-info {

@@ -1,19 +1,19 @@
 import { useState, useRef } from "react";
 import { TextField } from "@mui/material";
 
-interface HistoryPaginationProps {
+interface HistoryPageNavigatorProps {
   page: number;
   totalPages: number;
   total: number;
   onPageChange: (page: number) => void;
 }
 
-export function HistoryPagination({
+export function HistoryPageNavigator({
   page,
   totalPages,
   total,
   onPageChange,
-}: HistoryPaginationProps): React.ReactElement | null {
+}: HistoryPageNavigatorProps): React.ReactElement | null {
   if (totalPages <= 1) {
     return null;
   }
@@ -62,7 +62,7 @@ export function HistoryPagination({
   };
 
   return (
-    <div className="history-pagination">
+    <div className="page-navigator" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
       <button
         type="button"
         className="btn btn-secondary"
@@ -72,7 +72,7 @@ export function HistoryPagination({
         <span className="page-arrow">&larr;</span> 上一页
       </button>
 
-      <div className="page-info" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         {isEditing ? (
           <TextField
             inputRef={inputRef}
@@ -84,13 +84,15 @@ export function HistoryPagination({
             size="small"
             variant="outlined"
             type="text"
-            inputProps={{
-              style: {
-                textAlign: "center",
-                width: "45px",
-                padding: "4px 2px",
-                fontSize: "13px",
-                fontFamily: "'SF Mono', monospace",
+            slotProps={{
+              input: {
+                style: {
+                  textAlign: "center",
+                  width: "45px",
+                  padding: "4px 2px",
+                  fontSize: "13px",
+                  fontFamily: "'SF Mono', monospace",
+                },
               },
             }}
             sx={{
