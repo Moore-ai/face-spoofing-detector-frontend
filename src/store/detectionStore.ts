@@ -30,6 +30,7 @@ import {
 interface DetectionState {
   // 检测状态
   mode: DetectionMode;
+  defaultMode: DetectionMode;  // 默认检测模式（持久化存储）
   images: ImageInfo[];
   status: DetectionStatus;
   error: string | null;
@@ -46,6 +47,7 @@ interface DetectionState {
 interface DetectionActions {
   // 图片管理
   setMode: (mode: DetectionMode) => void;
+  setDefaultMode: (mode: DetectionMode) => void;  // 设置默认模式
   addImages: (images: ImageInfo[]) => void;
   removeImage: (id: string) => void;
   clearImages: () => void;
@@ -64,10 +66,11 @@ interface DetectionActions {
 
 export type DetectionStore = DetectionState & DetectionActions;
 
-// ===== 初始状态（使用 initializer 函数）=====
+// ===== 初始状态 =====
 
 const createInitialState = (): DetectionState => ({
   mode: 'single',
+  defaultMode: 'single',
   images: [],
   status: 'idle',
   error: null,
@@ -182,10 +185,14 @@ const createDetectionSlice = (
   _get: StoreApi<DetectionStore>['getState']
 ): Pick<
   DetectionActions,
-  'setMode' | 'addImages' | 'removeImage' | 'clearImages'
+  'setMode' | 'setDefaultMode' | 'addImages' | 'removeImage' | 'clearImages'
 > => ({
   setMode: (mode) => {
     set({ mode });
+  },
+  setDefaultMode: (mode) => {
+    // 同时更新当前模式和默认模式
+    set({ mode, defaultMode: mode });
   },
   addImages: (images) => {
     set((state) => ({ images: [...state.images, ...images] }));
@@ -464,10 +471,23 @@ export const detectionStore = createStore<DetectionStore>()(
     },
     {
       name: 'detection-storage',
-      partialize: () => ({
-        // 不持久化任何状态，clientId 是会话级别的状态
+      partialize: (state) => ({
+        // 只持久化 defaultMode
+        defaultMode: state.defaultMode,
       }),
-    } as PersistOptions<DetectionStore, Record<string, never>>
+      // 自定义合并逻辑，确保只恢复 defaultMode
+      merge: (persistedState, currentState) => {
+        const { defaultMode } = persistedState as { defaultMode?: DetectionMode };
+        if (defaultMode && (defaultMode === 'single' || defaultMode === 'fusion')) {
+          return {
+            ...currentState,
+            defaultMode,
+            mode: defaultMode, // 同时更新当前模式
+          };
+        }
+        return currentState;
+      },
+    } as PersistOptions<DetectionStore, Pick<DetectionStore, 'defaultMode'>>
   )
 );
 
@@ -501,6 +521,7 @@ export function getDetectionState(): Omit<DetectionState, 'completedResults'> & 
   const state = detectionStore.getState();
   return {
     mode: state.mode,
+    defaultMode: state.defaultMode,
     images: state.images,
     status: state.status,
     error: state.error,

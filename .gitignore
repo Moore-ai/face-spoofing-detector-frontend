@@ -28,6 +28,7 @@ nul
 CLAUDE.md
 .claude/**
 css-to-tailwind-workspace/**
+AGENTS.md
 
 # Environment variables
 .env

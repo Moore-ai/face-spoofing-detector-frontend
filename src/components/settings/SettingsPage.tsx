@@ -13,6 +13,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  ToggleButtonGroup,
+  ToggleButton,
 } from "@mui/material";
 import { deleteApiKey } from "../../api/tauri";
 import {
@@ -24,10 +26,13 @@ import {
   DeleteOutlined as DeleteOutlinedIcon,
   DownloadOutlined as DownloadOutlinedIcon,
   CheckCircle as CheckCircleIcon,
+  CropOriginal as CropOriginalIcon,
+  MergeType as MergeTypeIcon,
 } from "@mui/icons-material";
 import { useState } from "react";
 import { useTheme } from "@mui/material/styles";
 import { ShortcutsSettings } from "./ShortcutsSettings";
+import { useDetection } from "../../hooks/useDetection";
 
 /**
  * 设置页面组件
@@ -39,6 +44,9 @@ export function SettingsPage(): React.ReactElement {
   const [successMessage, setSuccessMessage] = useState<string>("");
   const [retentionDays, setRetentionDays] = useState<number>(30);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState<boolean>(false);
+
+  // 使用 detection hook 获取和设置默认模式
+  const { defaultMode, setDefaultMode } = useDetection();
 
   // 使用主题色
   const primaryColor = theme.palette.primary.main;
@@ -65,7 +73,7 @@ export function SettingsPage(): React.ReactElement {
    * 清除缓存
    */
   const handleClearCache = () => {
-    localStorage.removeItem("app_config");
+    localStorage.removeItem("detection-storage");
     setSuccessMessage("缓存已清除");
     setTimeout(() => setSuccessMessage(""), 3000);
   };
@@ -215,14 +223,47 @@ export function SettingsPage(): React.ReactElement {
                 每次启动应用时默认使用的检测模式
               </Typography>
 
-              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                <Button variant="contained" sx={{ bgcolor: primaryColor }}>
+              <ToggleButtonGroup
+                value={defaultMode}
+                exclusive
+                onChange={(_, newMode) => {
+                  if (newMode === 'single' || newMode === 'fusion') {
+                    setDefaultMode(newMode);
+                    setSuccessMessage(`默认模式已设置为${newMode === 'single' ? '单模态' : '融合模式'}`);
+                    setTimeout(() => setSuccessMessage(""), 2000);
+                  }
+                }}
+                sx={{ mt: 2 }}
+              >
+                <ToggleButton
+                  value="single"
+                  sx={{
+                    color: defaultMode === 'single' ? '#ffffff' : textSecondary,
+                    bgcolor: defaultMode === 'single' ? primaryColor : 'transparent',
+                    borderColor: primaryColor,
+                    '&:hover': {
+                      bgcolor: defaultMode === 'single' ? primaryColor : '#2d2d30',
+                    },
+                  }}
+                >
+                  <CropOriginalIcon sx={{ fontSize: 16, mr: 1 }} />
                   单模态
-                </Button>
-                <Button variant="outlined" sx={{ borderColor: "#3c3c3c", color: textSecondary }}>
+                </ToggleButton>
+                <ToggleButton
+                  value="fusion"
+                  sx={{
+                    color: defaultMode === 'fusion' ? '#ffffff' : textSecondary,
+                    bgcolor: defaultMode === 'fusion' ? primaryColor : 'transparent',
+                    borderColor: primaryColor,
+                    '&:hover': {
+                      bgcolor: defaultMode === 'fusion' ? primaryColor : '#2d2d30',
+                    },
+                  }}
+                >
+                  <MergeTypeIcon sx={{ fontSize: 16, mr: 1 }} />
                   融合模式
-                </Button>
-              </Stack>
+                </ToggleButton>
+              </ToggleButtonGroup>
             </Box>
 
             <Box sx={{
